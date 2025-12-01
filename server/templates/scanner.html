@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner de Inventario</title>
+    <style>
+        :root {
+            --primary-color: #3484F0;
+            --background-color: #1a1a1a;
+            --surface-color: #2a2d2e;
+            --text-color: #f0f0f0;
+            --border-color: #3a3d3e;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1, h2 { text-align: center; color: var(--text-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }
+        #interactive { position: relative; width: 100%; max-width: 500px; margin: 20px auto; overflow: hidden; border-radius: 8px; border: 1px solid var(--border-color); }
+        #interactive video, #interactive canvas { max-width: 100%; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid var(--border-color); background-color: var(--surface-color); border-radius: 8px; text-align: center; }
+        #product-list { margin-top: 20px; }
+        .product-item { background-color: var(--surface-color); border: 1px solid var(--border-color); padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .product-item .info { flex-grow: 1; }
+        .product-item .info span { display: block; }
+        .product-item .info .product-name { font-weight: bold; }
+        .product-item .info .product-stock { font-size: 0.9em; color: #a0a0a0; }
+        .product-item input { width: 60px; text-align: center; background-color: var(--background-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; }
+        .product-item .remove-btn { background-color: var(--error-color); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
+        #confirm-stock { width: 100%; padding: 15px; background-color: var(--success-color); color: white; border: none; cursor: pointer; margin-top: 20px; border-radius: 8px; font-size: 1.2em; font-weight: bold; }
+        #confirm-stock:hover { opacity: 0.9; }
+        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; }
+        #toast.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--primary-color); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+        .search-form { display: flex; gap: 10px; margin-bottom: 10px; }
+        .search-form input { flex-grow: 1; }
+        .search-result-item { background-color: #3a3d3e; padding: 10px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .search-result-item button { padding: 5px 10px; background-color: var(--primary-color); }
+        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Escáner de Inventario</h1>
+
+        <!-- Área donde se mostrará la cámara -->
+        <div id="interactive" class="viewport"></div>
+
+        <!-- Búsqueda Manual -->
+        <div id="manual-search">
+            <h2>Búsqueda Manual</h2>
+            <div class="search-form">
+                <input type="text" id="search-input" placeholder="Buscar producto por nombre...">
+                <button id="search-button">Buscar</button>
+            </div>
+            <div id="search-results"></div>
+        </div>
+
+        <!-- Lista de productos escaneados -->
+        <div id="product-list">
+            <h2>Productos a Ingresar</h2>
+            <!-- Aquí se añadirán dinámicamente los productos escaneados -->
+        </div>
+
+        <button id="confirm-stock">Confirmar Ingreso de Stock</button>
+    </div>
+
+    <!-- Elementos para feedback visual -->
+    <div id="toast"></div>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <!-- Aquí se cargará el script de escaneo y nuestra lógica -->
+    <!-- Primero, la librería QuaggaJS desde un CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <!-- Luego, nuestro propio script -->
+    <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+</body>
+</html>

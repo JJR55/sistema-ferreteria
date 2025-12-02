@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket - Sistema Ferretería</title>
+    <style>
+        /* Estilos para pantalla */
+        @media screen {
+            body {
+                font-family: 'Courier New', monospace;
+                background-color: #f8f9fa;
+                margin: 0;
+                padding: 20px;
+            }
+            .ticket-container {
+                max-width: 300px;
+                margin: 0 auto;
+                background: white;
+                padding: 20px;
+                border: 1px dashed #ccc;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+                font-size: 24px;
+                color: #007bff;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            .print-instruction {
+                text-align: center;
+                margin-top: 20px;
+                padding: 10px;
+                background: #e9ecef;
+                border-radius: 4px;
+            }
+            .print-btn {
+                display: block;
+                width: 100%;
+                padding: 15px;
+                background: #28a745;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 18px;
+                cursor: pointer;
+                margin: 20px 0;
+            }
+            .print-btn:hover {
+                background: #218838;
+            }
+        }
+
+        /* Estilos para impresión */
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+
+            body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                line-height: 1.2;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                background: white;
+            }
+
+            .ticket-container {
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 5px;
+                border: none;
+                box-shadow: none;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .center { text-align: center; }
+            .right { text-align: right; }
+            .bold { font-weight: bold; }
+            .underline { text-decoration: underline; }
+            .line { border-bottom: 1px dashed #000; margin: 3px 0; }
+            .double-line { border-bottom: 2px solid #000; margin: 5px 0; }
+
+            /* Ajustes de fuente para impresión de tickets térmicos */
+            .large { font-size: 16px; }
+            .xlarge { font-size: 20px; font-weight: bold; }
+
+            /* Espaciado compacto */
+            p, div { margin: 2px 0; }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            table td {
+                padding: 2px 0;
+                vertical-align: top;
+            }
+
+            .product-col { width: auto; }
+            .qty-col { width: 15%; text-align: left; }
+            .price-col { width: 25%; text-align: right; }
+            .subtotal-col { width: 25%; text-align: right; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-container">
+        <!-- Botón para imprimir (solo visible en pantalla) -->
+        <button onclick="window.print()" class="print-btn no-print">
+            🖨️ Imprimir Ticket
+        </button>
+
+        <!-- Boleto -->
+        <div class="center bold large">
+            Ferretería XYZ<br>
+            ------------------------------<br>
+            RNC: XXXXXXXXXXX<br>
+            Av. Principal #123, Santo Domingo<br>
+            Tel: (809) 555-1234<br>
+            ------------------------------<br>
+        </div>
+
+        <div>
+            <strong>Factura No:</strong> {{ ticket.sale_id }}<br>
+            <strong>Fecha:</strong> {{ ticket.fecha }}<br>
+            <strong>Cliente:</strong> {{ ticket.cliente }}<br>
+            <div class="line"></div>
+        </div>
+
+        <!-- Tabla de productos -->
+        <table>
+            <thead>
+                <tr>
+                    <th class="qty-col">Cant.</th>
+                    <th class="product-col">Producto</th>
+                    <th class="price-col">P.Unit</th>
+                    <th class="subtotal-col">Subt.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ticket.items %}
+                <tr>
+                    <td class="qty-col">{{ item.cantidad }}x</td>
+                    <td class="product-col">
+                        {% if item.nombre|length > 15 %}
+                            {{ item.nombre[:14] }}.
+                        {% else %}
+                            {{ item.nombre }}
+                        {% endif %}
+                    </td>
+                    <td class="price-col">RD$ {{ "%.2f"|format(item.precio) }}</td>
+                    <td class="subtotal-col">RD$ {{ "%.2f"|format(item.subtotal) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="line"></div>
+
+        <!-- Totales -->
+        <div class="right">
+            Subtotal: RD$ {{ "%.2f"|format(ticket.subtotal_bruto) }}<br>
+            {% if ticket.descuento > 0 %}
+            Descuento: - RD$ {{ "%.2f"|format(ticket.descuento) }}<br>
+            {% endif %}
+            ITBIS ({{ "%.0f"|format(ticket.itbis_rate * 100) }}%): RD$ {{ "%.2f"|format(ticket.itbis_incluido) }}<br>
+            <div class="double-line"></div>
+            <strong class="xlarge">TOTAL: RD$ {{ "%.2f"|format(ticket.total) }}</strong><br><br>
+        </div>
+
+        <!-- Información de pago -->
+        {% if ticket.monto_recibido %}
+        <div class="right">
+            Efectivo Recibido: RD$ {{ "%.2f"|format(ticket.monto_recibido) }}<br>
+            Devuelta: RD$ {{ "%.2f"|format(ticket.devuelta) }}<br><br>
+        </div>
+        {% endif %}
+
+        <!-- Pie -->
+        <div class="center">
+            ¡Gracias por su compra!<br><br>
+            <small>Documento generado por sistema web</small>
+        </div>
+    </div>
+
+    <div class="print-instruction no-print">
+        <p><strong>Para imprimir correctamente:</strong></p>
+        <ol>
+            <li>Haz clic en "Imprimir Ticket"</li>
+            <li>Selecciona "Guardar como PDF" o tu impresora térmica</li>
+            <li>Configura papel: Ancho 80mm, Alto automático</li>
+            <li>Imprime con escala al 100%</li>
+        </ol>
+    </div>
+
+    <script>
+        // Auto-imprimir cuando se carga desde POS (opcional)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('auto_print') === '1') {
+            setTimeout(() => window.print(), 500);
+        }
+    </script>
+</body>
+</html>

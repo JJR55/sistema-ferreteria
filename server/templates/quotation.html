@@ -1,0 +1,589 @@
+{% extends "layout.html" %}
+
+{% block title %}Cotizaciones - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-file-earmark-text"></i> Sistema de Cotizaciones{% endblock %}
+
+{% block breadcrumb %}Gestión de Cotizaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Panel izquierdo: creación de cotización -->
+        <div class="col-lg-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Nueva Cotización</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Selector de cliente -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Cliente</label>
+                        <div class="input-group">
+                            <input type="text" id="client-search" class="form-control" placeholder="Buscar cliente por nombre o RNC...">
+                            <span class="input-group-text"><i class="bi bi-person-lines-fill"></i></span>
+                        </div>
+                        <div id="client-results" class="mt-2"></div>
+                        <div id="selected-client" class="mt-2 d-none">
+                            <div class="alert alert-success">
+                                <strong>Cliente seleccionado:</strong> <span id="client-name"></span>
+                                <button class="btn btn-sm btn-outline-danger ms-2" id="clear-client">Cambiar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Búsqueda de productos y escaneo -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Agregar Productos</label>
+
+                        <!-- Campo de escaneo de código de barras -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                                <input type="text" id="barcode-input" class="form-control barcode-input-auto" placeholder="Escanear código de barras..." maxlength="20">
+                            </div>
+                            <small class="text-muted">Escanee automáticamente</small>
+                        </div>
+
+                        <!-- Búsqueda manual -->
+                        <div class="input-group">
+                            <input type="text" id="product-search" class="form-control" placeholder="Buscar productos por nombre...">
+                            <button class="btn btn-outline-secondary" id="search-product-btn" type="button">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                        </div>
+                        <div id="product-results" class="mt-2"></div>
+                    </div>
+
+                    <!-- Tabla de productos añadidos -->
+                    <div class="card border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Productos en la Cotización</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Cant.</th>
+                                            <th>Precio</th>
+                                            <th>Subtotal</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="quotation-items">
+                                        <!-- Productos se insertan aquí dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="empty-cart" class="text-center p-4 text-muted">
+                                <i class="bi bi-cart-x display-4"></i>
+                                <p class="mt-2">No hay productos en la cotización</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: resumen y acciones -->
+        <div class="col-lg-4">
+            <div class="card shadow-lg sticky-top" style="top: 20px;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Resumen de Cotización</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Resumen de totales -->
+                    <div class="d-grid gap-3">
+                        <div class="text-center">
+                            <div class="fs-5 fw-bold text-muted mb-3">Total de Items</div>
+                            <div class="display-6 fw-bold text-primary" id="total-items">0</div>
+                        </div>
+
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal Base:</span>
+                                <span class="fw-bold" id="subtotal-display">RD$ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>ITBIS (18%):</span>
+                                <span class="fw-bold" id="itbis-display">RD$ 0.00</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between fs-4 fw-bold">
+                                <span>Total:</span>
+                                <span class="text-success" id="total-display">RD$ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-outline-primary" id="save-quotation-btn">
+                            <i class="bi bi-save"></i> Guardar Cotización
+                        </button>
+                        <button class="btn btn-success btn-lg" id="generate-pdf-btn">
+                            <i class="bi bi-file-earmark-pdf"></i> Generar PDF
+                        </button>
+                        <button class="btn btn-danger btn-lg" id="clear-quotation-btn">
+                            <i class="bi bi-x-circle"></i> Limpiar Todo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historial de cotizaciones -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-lg">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cotizaciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotations-history">
+                                <!-- Cotizaciones se insertan aquí dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="empty-history" class="text-center p-4 text-muted">
+                        <i class="bi bi-file-earmark-x display-4"></i>
+                        <p class="mt-2">No hay cotizaciones guardadas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cantidad -->
+<div class="modal fade" id="quantityModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cantidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="number" class="form-control text-center" id="quantity-input" min="1" value="1">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirm-quantity">Agregar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let quotationItems = [];
+    let selectedClient = null;
+    let selectedProductForQuantity = null;
+    const ITBIS_RATE = 0.18;
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+    }
+
+    function updateSummary() {
+        const totalItems = quotationItems.reduce((sum, item) => sum + item.cantidad, 0);
+        const subtotal = quotationItems.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+        const itbis = subtotal * ITBIS_RATE;
+        const total = subtotal + itbis;
+
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('subtotal-display').textContent = formatCurrency(subtotal);
+        document.getElementById('itbis-display').textContent = formatCurrency(itbis);
+        document.getElementById('total-display').textContent = formatCurrency(total);
+
+        document.getElementById('empty-cart').style.display = quotationItems.length === 0 ? 'block' : 'none';
+    }
+
+    function renderQuotationItems() {
+        const tbody = document.getElementById('quotation-items');
+        tbody.innerHTML = '';
+
+        quotationItems.forEach((item, index) => {
+            const subtotal = item.cantidad * item.precio;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${item.nombre}</strong></td>
+                <td><input type="number" class="form-control form-control-sm text-center" value="${item.cantidad}" min="1" onchange="updateQuantity(${index}, this.value)"></td>
+                <td>${formatCurrency(item.precio)}</td>
+                <td>${formatCurrency(subtotal)}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="removeItem(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        updateSummary();
+    }
+
+    function updateQuantity(index, newQuantity) {
+        const qty = parseInt(newQuantity);
+        if (qty > 0) {
+            quotationItems[index].cantidad = qty;
+            renderQuotationItems();
+        }
+    }
+
+    function removeItem(index) {
+        quotationItems.splice(index, 1);
+        renderQuotationItems();
+    }
+
+    async function loadQuotationsHistory() {
+        try {
+            const response = await fetch('/api/quotations');
+            const quotations = await response.json();
+
+            const tbody = document.getElementById('quotations-history');
+            tbody.innerHTML = '';
+
+            if (quotations.length === 0) {
+                document.getElementById('empty-history').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('empty-history').style.display = 'none';
+
+            quotations.forEach(q => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${q.id}</td>
+                    <td>${new Date(q.fecha).toLocaleDateString('es-DO')}</td>
+                    <td>${q.cliente || 'Consumidor Final'}</td>
+                    <td>${formatCurrency(q.total || 0)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewQuotation(${q.id})">
+                            <i class="bi bi-eye"></i> Ver
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error al cargar historial:', error);
+        }
+    }
+
+    function viewQuotation(quotationId) {
+        window.open(`/api/quotation/generate_pdf/${quotationId}`, '_blank');
+    }
+
+    // Event listeners
+    document.getElementById('product-search').addEventListener('keyup', async (e) => {
+        const term = e.target.value;
+        if (term.length < 3) {
+            document.getElementById('product-results').innerHTML = '';
+            return;
+        }
+
+        const response = await fetch('/api/search_products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term })
+        });
+        const data = await response.json();
+
+        const resultsDiv = document.getElementById('product-results');
+        resultsDiv.innerHTML = '';
+
+        if (data.success && data.products.length > 0) {
+            data.products.forEach(product => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                item.innerHTML = `
+                    <div>
+                        <strong>${product.nombre}</strong><br>
+                        <small class="text-muted">${formatCurrency(product.precio)}</small>
+                    </div>
+                    <span class="badge bg-primary">Stock: ${product.stock}</span>
+                `;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    selectedProductForQuantity = product;
+                    document.getElementById('quantity-input').value = '1';
+                    new bootstrap.Modal(document.getElementById('quantityModal')).show();
+                    resultsDiv.innerHTML = '';
+                    document.getElementById('product-search').value = '';
+                };
+                resultsDiv.appendChild(item);
+            });
+            resultsDiv.className = 'list-group position-absolute w-100 mt-1 shadow-sm';
+        }
+    });
+
+    document.getElementById('confirm-quantity').addEventListener('click', () => {
+        const quantity = parseInt(document.getElementById('quantity-input').value);
+        if (quantity > 0 && selectedProductForQuantity) {
+            quotationItems.push({
+                ...selectedProductForQuantity,
+                cantidad: quantity
+            });
+            renderQuotationItems();
+        }
+        bootstrap.Modal.getInstance(document.getElementById('quantityModal')).hide();
+    });
+
+    document.getElementById('client-search').addEventListener('keyup', async (e) => {
+        const term = e.target.value;
+        if (term.length < 2) {
+            document.getElementById('client-results').innerHTML = '';
+            return;
+        }
+
+        const response = await fetch('/api/search_clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ term })
+        });
+        const data = await response.json();
+
+        const resultsDiv = document.getElementById('client-results');
+        resultsDiv.innerHTML = '';
+
+        if (data.success && data.clients.length > 0) {
+            data.clients.forEach(client => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `
+                    <strong>${client.nombre}</strong><br>
+                    <small class="text-muted">${client.rnc_cedula}</small>
+                `;
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    selectedClient = client;
+                    document.getElementById('client-name').textContent = client.nombre;
+                    document.getElementById('selected-client').classList.remove('d-none');
+                    document.getElementById('client-search').value = '';
+                    resultsDiv.innerHTML = '';
+                };
+                resultsDiv.appendChild(item);
+            });
+            resultsDiv.className = 'list-group position-absolute w-100 mt-1 shadow-sm';
+        }
+    });
+
+    document.getElementById('clear-client').addEventListener('click', () => {
+        selectedClient = null;
+        document.getElementById('selected-client').classList.add('d-none');
+    });
+
+    document.getElementById('save-quotation-btn').addEventListener('click', async () => {
+        if (quotationItems.length === 0) {
+            alert('Agregue productos a la cotización');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quotation/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: quotationItems,
+                    client_id: selectedClient ? selectedClient._id : null
+                })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Cotización guardada con ID: ${result.quotation_id}`);
+                quotationItems = [];
+                selectedClient = null;
+                document.getElementById('selected-client').classList.add('d-none');
+                renderQuotationItems();
+                loadQuotationsHistory();
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión');
+        }
+    });
+
+    document.getElementById('generate-pdf-btn').addEventListener('click', async () => {
+        if (quotationItems.length === 0) {
+            alert('Agregue productos a la cotización');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/generate_quotation_pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: quotationItems,
+                    client: selectedClient ? { nombre: selectedClient.nombre } : { nombre: 'Consumidor Final' }
+                })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } else {
+                const result = await response.json();
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión');
+        }
+    });
+
+    document.getElementById('clear-quotation-btn').addEventListener('click', () => {
+        if (quotationItems.length > 0 && confirm('¿Está seguro de limpiar la cotización?')) {
+            quotationItems = [];
+            selectedClient = null;
+            document.getElementById('selected-client').classList.add('d-none');
+            renderQuotationItems();
+        }
+    });
+
+    // Event listener para escaneo de código de barras
+    let barcodeScanTimeout;
+
+    document.getElementById('barcode-input').addEventListener('input', async (e) => {
+        const input = e.target;
+        const barcode = input.value.trim();
+
+        // Limpiar timeout anterior
+        if (barcodeScanTimeout) {
+            clearTimeout(barcodeScanTimeout);
+        }
+
+        // Si no hay caracteres, salir
+        if (!barcode) return;
+
+        // Si el código es demasiado corto, esperar más input
+        if (barcode.length < 8) return;
+
+        // Si el código parece completo (8-13 caracteres, solo dígitos), procesar automáticamente
+        if (barcode.length >= 8 && barcode.length <= 13 && /^[0-9]+$/.test(barcode)) {
+            // Procesar inmediatamente si parece un código de barras válido
+            processBarcodeScan(barcode);
+        } else if (barcode.length > 13) {
+            // Si es muy largo, podría ser ingreso manual o código largo, procesar con delay
+            barcodeScanTimeout = setTimeout(() => {
+                if (input.value.trim() === barcode) {
+                    processBarcodeScan(barcode);
+                }
+            }, 300);
+        }
+    });
+
+    // También mantener el método manual con Enter por si acaso
+    document.getElementById('barcode-input').addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const barcode = e.target.value.trim();
+            if (barcode) {
+                processBarcodeScan(barcode);
+            }
+        }
+    });
+
+    async function processBarcodeScan(barcode) {
+        const input = document.getElementById('barcode-input');
+
+        // Limpiar timeout si existe
+        if (barcodeScanTimeout) {
+            clearTimeout(barcodeScanTimeout);
+        }
+
+        // Limpiar el campo
+        input.value = '';
+        input.focus();
+
+        try {
+            const response = await fetch('/api/scan_product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: barcode })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                selectedProductForQuantity = result.product;
+                document.getElementById('quantity-input').value = '1';
+                new bootstrap.Modal(document.getElementById('quantityModal')).show();
+
+                // Reproducir beep de éxito si está disponible
+                if ('Audio' in window) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+
+                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                    } catch (e) {
+                        console.log('Beep no disponible');
+                    }
+                }
+            } else {
+                // Reproducir beep de error
+                if ('Audio' in window) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+
+                        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    } catch (e) {
+                        console.log('Beep de error no disponible');
+                    }
+                }
+
+                alert(`Producto no encontrado: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión al buscar el producto.');
+        }
+    }
+
+    // Inicialización
+    renderQuotationItems();
+    loadQuotationsHistory();
+</script>
+{% endblock %}

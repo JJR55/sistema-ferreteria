@@ -1,80 +1,149 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const scannedItems = {}; // Objeto para almacenar productos escaneados { productId: {data, quantity} }
+    // --- ESTADO DE LA APLICACIÓN ---
+    const scannedItems = {}; // { productId: {data, quantity} }
     let isScannerActive = false;
-    let allProducts = []; // Caché de productos para la búsqueda
+    let quaggaInitialized = false;
 
-        // --- Elementos del DOM ---
+    // --- ELEMENTOS DEL DOM ---
     const loader = document.getElementById('loader');
-    const toast = document.getElementById('toast');
     const searchInput = document.getElementById('search-input');
+    const searchResultsDiv = document.getElementById('search-results');
+    const productListDiv = document.getElementById('product-list');
+    const confirmStockBtn = document.getElementById('confirm-stock');
+    const interactiveDiv = document.getElementById('interactive');
+    const scannerStatus = document.getElementById('scanner-status');
+    const productsCount = document.getElementById('products-count');
+    const cameraOverlay = document.getElementById('camera-overlay');
+    const activateCameraBtn = document.getElementById('activate-camera-btn');
 
-    // --- Sonidos ---
-    const successSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(1e3).join("121213131414151516161717181819191a1a1b1b1c1c1d1d1e1e1f1f20202121222223232424252526262727282829292a2a2b2b2c2c2d2d2e2e2f2f30303131323233333434353536363737383839393a3a3b3b3c3c3d3d3e3e3f3f40404141424243434444454546464747484849494a4a4b4b4c4c4d4d4e4e4f4f50505151525253535454555556565757585859595a5a5b5b5c5c5d5d5e5e5f5f60606161626263636464656566666767686869696a6a6b6b6c6c6d6d6e6e6f6f70707171727273737474757576767777787879797a7a7b7b7c7c7d7d7e7e7f7f80808181828283838484858586868787888889898a8a8b8b8c8c8d8d8e8e8f8f90909191929293939494959596969797989899999a9a9b9b9c9c9d9d9e9e9f9fa0a0a1a1a2a2a3a3a4a4a5a5a6a6a7a7a8a8a9a9aaabacacadaeaeafacecfcfdfdfeff"));
-    const errorSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(1e3).join("9898979796969595949493939292919190908f8f8e8e8d8d8c8c8b8b8a8a89898888878786868585848483838282818180807f7f7e7e7d7d7c7c7b7b7a7a79797878777776767575747473737272717170706f6f6e6e6d6d6c6c6b6b6a6a69696868676766666565646463636262616160605f5f5e5e5d5d5c5c5b5b5a5a59595858575756565555545453535252515150504f4f4e4e4d4d4c4c4b4b4a4a49494848474746464545444443434242414140403f3f3e3e3d3d3c3c3b3b3a3a39393838373736363535343433333232313130302f2f2e2e2d2d2c2c2b2b2a2a29292828272726262525242423232222212120201f1f1e1e1d1d1c1c1b1b1a1a19191818171716161515141413131212111110100f0f0e0e0d0d0c0c0b0b0a0a09090808070706060505040403030202010100"));
+    // --- SONIDOS (Feedback Auditivo) ---
+    // Beep de éxito - tono más audible y profesional
+    const successSound = new Audio();
+    successSound.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PrqJI/ME6T6ty+hSwTKYDf7bOFYBtGhOSfjGRBQkpMqejlmpVkXFhHo9bKoJcJaVpGpqOgm2lYXVBMn+bGmWpGRFlEfqlFh2xhVUVXquLHlpxdZVlGkaLRl5NjXEpBE6tNnWVhVUpPWubs6JqEYjxIoe7s6Z+AbjtGmejbhWZeT1RFldPcnKKHbDpGoOHYkGJeRlVFVdHWoGODejpGn+rWkWNgUkxRW9rY5KWHcDpEneDPjGRhXVNMjGLGlWJjRE9HY9uBfotxeDpC6+7jnJ1wQkhRXNrKoZiFXFw/nujgmp9lX1hFpdXNpZiHX22BrebjlGRhXF9GV9jJl5diX1pFWdzNmpuEfzqB0+vjnJ+EYEFAXd7JnJyFbTpBluLcnJxpRkdDUdzLmp6EdjqBjOLakkRhQkdDUdzLmp+EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyYZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCUd/KnZyFbDtBlEDcnpyQAAAA=";
 
-    // --- Funciones de UI ---
+    // Beep de error - tono descendente
+    const errorSound = new Audio();
+    errorSound.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PrqJI/ME6T6ty+hSwTKYDf7bOFYBtGhOSfjGRBQkpMqejlmpVkXFhHo9bKoJcJaVpGpqOgm2lYXVBMn+bGmWpGRFlEfqlFh2xhVUVXquLHlpxdZVlGkaLRl5NjXEpBE6tNnWVhVUpPWubs6JqEYjxIoe7s6Z+AbjtGmejbhWZeT1RFldPcnKKHbDpGoOHYkGJeRlVFVdHWoGODejpGn+rWkWNgUkxRW9rY5KWHcDpEneDPjGRhXVNMjGLGlWJjRE9HY9uBfotxeDpC6+7jnJ1wQkhRXNrKoZiFXFw/nujgmp9lX1hFpdXNpZiHX22BrebjlGRhXF9GV9jJl5diX1pFWdzNmpuEfzqB0+vjnJ+EYEFAXd7JnJyFbTpBluLcnJxpRkdDUdzLmp6EdjqBjOLakkRhQkdDUdzLmp+EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyQZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyQZUdCUbr8npmEeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyQZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyQZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQEFCXd/KnZyFbDtBl+LcnpyQZUdCUdzLmp2EeTKAg+vjnJ+EYEFAUd7JnJyFbTpBl+LcnJxpRkdCUdzLmp6EdjqBjOPalyRhQ==";
+
+    // --- FUNCIONES DE UI ---
     function showLoader(show) {
         loader.style.display = show ? 'flex' : 'none';
     }
 
     function showToast(message, isError = false) {
         toast.textContent = message;
-        toast.style.backgroundColor = isError ? 'var(--error-color)' : 'var(--success-color)';
+        toast.className = "show " + (isError ? 'error' : 'success');
         toast.className = "show";
         setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
     }
 
-    function initScanner() {
-        if (isScannerActive) {
-            Quagga.stop();
-            isScannerActive = false;
+    // --- LÓGICA DEL ESCÁNER (QUAGGA.JS) ---
+    async function initScanner() {
+        if (quaggaInitialized) return; // Evitar reinicializar si ya está listo
+
+        // Primero solicitar permisos de cámara
+        const hasPermissions = await requestCameraPermissions();
+        if (!hasPermissions) {
+            return; // No continuar si no hay permisos
         }
+
+        updateScannerStatus('Inicializando escáner...', 'warning');
 
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
-                target: document.querySelector('#interactive'),
+                target: interactiveDiv,
                 constraints: {
                     width: { min: 640 },
                     height: { min: 480 },
                     facingMode: "environment" // Usa la cámara trasera del celular
                 },
             },
-            decoder: {
-                readers: [
-                    "code_128_reader",
-                    "ean_reader",
-                    "ean_8_reader",
-                    "code_39_reader",
-                    "code_39_vin_reader",
-                    "codabar_reader",
-                    "upc_reader",
-                    "upc_e_reader",
-                    "i2of5_reader"
-                
-                    
-                ]
-            },
+            decoder: { readers: ["ean_reader", "code_128_reader", "upc_reader"] },
+            locate: true,
+            locator: { patchSize: "medium", halfSample: true },
+            numOfWorkers: navigator.hardwareConcurrency || 4,
         }, function(err) {
             if (err) {
                 console.error(err);
-                alert("Error al iniciar el escáner. Asegúrate de dar permisos a la cámara.");
+                updateScannerStatus('Error al iniciar escáner', 'danger');
+                showToast("Error al iniciar escáner.", true);
                 return;
             }
-            console.log("Escáner iniciado correctamente.");
-            Quagga.start();
-            isScannerActive = true;
+            console.log("Escáner inicializado correctamente.");
+            quaggaInitialized = true;
+            updateScannerStatus('Escáner listo', 'success');
+
+            // Iniciar automáticamente después de 1 segundo
+            setTimeout(() => {
+                startScanner();
+            }, 1000);
+        });
+
+        Quagga.onDetected(handleDetection);
+        Quagga.onProcessed(frame => {
+            const drawingCtx = Quagga.canvas.ctx.overlay;
+            const drawingCanvas = Quagga.canvas.dom.overlay;
+            drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
+            if (frame) {
+                if (frame.boxes) {
+                    frame.boxes.filter(box => box !== frame.box).forEach(box => {
+                        Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, { color: "green", lineWidth: 2 });
+                    });
+                }
+                if (frame.box) {
+                    Quagga.ImageDebug.drawPath(frame.box, { x: 0, y: 1 }, drawingCtx, { color: "#00F", lineWidth: 2 });
+                }
+            }
         });
     }
 
-    Quagga.onDetected(function(result) {
-        const code = result.codeResult.code;
-        Quagga.stop(); // Pausar para evitar múltiples escaneos
-        isScannerActive = false;
-        handleBarcode(code);
-    });
+    function startScanner() {
+        if (quaggaInitialized && !isScannerActive) {
+            Quagga.start();
+            isScannerActive = true;
+            interactiveDiv.style.display = 'block';
+            interactiveDiv.classList.add('active'); // Agregar clase para estilos
+            hideCameraOverlay(); // Ocultar overlay cuando la cámara inicia
+            updateScannerStatus('Escáner activo - enfocando código', 'primary');
+        }
+    }
 
+    function hideCameraOverlay() {
+        if (cameraOverlay) {
+            cameraOverlay.style.display = 'none';
+        }
+    }
+
+    function showCameraOverlay() {
+        if (cameraOverlay && !isScannerActive) {
+            cameraOverlay.style.display = 'flex';
+        }
+    }
+
+    function stopScanner() {
+        if (isScannerActive) {
+            Quagga.stop();
+            isScannerActive = false;
+            interactiveDiv.style.display = 'none';
+            updateScannerStatus('Escáner pausado', 'warning');
+        }
+    }
+
+    const handleDetection = (result) => {
+        if (!isScannerActive) return; // Evitar detecciones mientras está pausado
+        const code = result.codeResult.code;
+
+        // Pausar temporalmente el escáner para evitar múltiples detecciones
+        Quagga.stop();
+        isScannerActive = false;
+        updateScannerStatus('Código detectado - procesando...', 'info');
+
+        handleBarcode(code);
+    };
+
+    // --- LÓGICA DE MANEJO DE DATOS ---
     async function handleBarcode(barcode) {
         showLoader(true);
         try {
@@ -87,11 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                successSound.play();
+                successSound.play().catch(e => console.error("Error al reproducir sonido:", e));
                 showToast(`Producto "${result.product.nombre}" encontrado.`);
                 addProductToList(result.product);
             } else {
-                errorSound.play();
+                errorSound.play().catch(e => console.error("Error al reproducir sonido:", e));
                 showToast(`Producto no encontrado: ${result.error}`, true);
             }
         } catch (error) {
@@ -99,11 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Error de red al buscar el producto.', true);
         } finally {
             showLoader(false);
-            // Reanudar el escáner después de un breve momento
+            // Reanudar el escáner después de un breve momento para permitir al usuario ver el resultado
             setTimeout(() => {
-                Quagga.start();
-                isScannerActive = true;
-            }, 1000);
+                if (!isScannerActive) { // Solo si no está ya activo
+                    startScanner();
+                }
+            }, 1500);
         }
     }
 
@@ -119,41 +189,132 @@ document.addEventListener('DOMContentLoaded', function() {
         renderProductList();
     }
 
-    window.addProductFromSearch = addProductToList;
     function renderProductList() {
-        const productListDiv = document.getElementById('product-list');
-        productListDiv.innerHTML = '<h2>Productos a Ingresar:</h2>'; // Limpiar y poner el título
+        const totalProductos = Object.keys(scannedItems).length;
+        productsCount.textContent = totalProductos + ' productos';
+
+        if (totalProductos === 0) {
+            productListDiv.innerHTML = `
+                <div class="text-center text-muted mt-5">
+                    <i class="bi bi-upc-scan display-4"></i>
+                    <p class="mt-2">Escanee productos para comenzar...</p>
+                </div>
+            `;
+            return;
+        }
+
+        productListDiv.innerHTML = '';
 
         for (const productId in scannedItems) {
             const item = scannedItems[productId];
             const itemDiv = document.createElement('div');
-            itemDiv.className = 'product-item';
-            itemDiv.dataset.productId = productId;
+            itemDiv.className = 'card mb-2 shadow-sm';
             itemDiv.innerHTML = `
-            <div class="info">
-                    <span class="product-name">${item.data.nombre}</span>
-                    <span class="product-stock">Stock actual: ${item.data.stock}</span>
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${item.data.nombre}</h6>
+                            <small class="text-muted">Stock actual: ${item.data.stock}</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="number" class="form-control form-control-sm text-center"
+                                   value="${item.quantity}" min="1" style="width: 70px;"
+                                   data-product-id="${productId}">
+                            <button class="btn btn-sm btn-outline-danger" data-product-id="${productId}" title="Eliminar">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <input type="number" value="${item.quantity}" min="1" onchange="updateQuantity(${productId}, this.value)">
-                <button class="remove-btn" onclick="removeItem(${productId})">X</button>
             `;
             productListDiv.appendChild(itemDiv);
         }
     }
-    
-    window.removeItem = function(productId) {
-        delete scannedItems[productId];
-        renderProductList();
-        showToast("Producto eliminado de la lista.");
 
-    }
-    window.updateQuantity = function(productId, newQuantity) {
-        if (scannedItems[productId]) {
-            scannedItems[productId].quantity = parseInt(newQuantity, 10);
+    function showToast(message, isError = false) {
+        // Usar Bootstrap toast si está disponible
+        const toastElement = document.getElementById('toast-element');
+        const toastMessage = document.getElementById('toast-message');
+
+        if (toastElement && toastMessage) {
+            toastMessage.textContent = message;
+            toastElement.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+
+            const bsToast = new bootstrap.Toast(toastElement);
+            bsToast.show();
+        } else {
+            // Fallback básico
+            alert(message);
         }
     }
 
-    document.getElementById('confirm-stock').addEventListener('click', async function() {
+    function updateScannerStatus(message, type = 'secondary') {
+        if (scannerStatus) {
+            scannerStatus.innerHTML = `<i class="bi bi-circle-fill text-${type}"></i> ${message}`;
+        }
+    }
+
+    // Solicitar permisos de cámara antes de inicializar
+    async function requestCameraPermissions() {
+        try {
+            updateScannerStatus('Solicitando permisos de cámara...', 'warning');
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: "environment",
+                    width: { min: 640, ideal: 1280 },
+                    height: { min: 480, ideal: 720 }
+                }
+            });
+
+            // Detener el stream después de obtener permisos
+            stream.getTracks().forEach(track => track.stop());
+
+            updateScannerStatus('Permisos de cámara concedidos', 'success');
+            return true;
+        } catch (error) {
+            console.error('Error al solicitar permisos de cámara:', error);
+            updateScannerStatus('Error: Permisos de cámara denegados', 'danger');
+            showToast('Haz clic en "Activar Cámara" para permitir el acceso a la cámara.', true);
+            showCameraOverlay(); // Mostrar overlay si no hay permisos
+            return false;
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+
+    // Botón de activación de cámara
+    if (activateCameraBtn) {
+        activateCameraBtn.addEventListener('click', async function() {
+            initScanner(); // Intentar inicializar cuando se hace clic
+        });
+    }
+
+    // Overlay también puede activar la cámara al hacer clic
+    if (cameraOverlay) {
+        cameraOverlay.addEventListener('click', function(e) {
+            // No hacerlo si se hizo clic en el botón específicamente
+            if (e.target !== activateCameraBtn) {
+                initScanner();
+            }
+        });
+    }
+
+    // Activar cámara cuando se hace foco en campos de escaneo
+    const inputs = document.querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            // Solo activar si no está ya activo
+            if (!quaggaInitialized && !isScannerActive) {
+                setTimeout(() => initScanner(), 100); // Pequeño delay para UX
+            }
+        });
+    });
+
+    // Delegación de eventos para la lista de productos
+    productListDiv.addEventListener('click', handleProductListActions);
+    productListDiv.addEventListener('change', handleProductListActions);
+
+    confirmStockBtn.addEventListener('click', async function() {
         const items = Object.values(scannedItems).map(item => ({
             product_id: item.data.id,
             quantity: item.quantity
@@ -184,55 +345,100 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoader(false);        }
     });
 
-        // --- Lógica de Búsqueda Manual ---
-    document.getElementById('search-button').addEventListener('click', async function() {
-        const searchTerm = searchInput.value;
-        if (searchTerm.length < 3) {
-            showToast("La búsqueda requiere al menos 3 caracteres.", true);
+    // Búsqueda manual mientras se escribe
+    searchInput.addEventListener('keyup', async function(e) {
+        const term = e.target.value;
+        if (term.length < 3) {
+            searchResultsDiv.innerHTML = '';
             return;
         }
-
         showLoader(true);
         try {
             const response = await fetch('/api/search_products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ term: searchTerm })
+                body: JSON.stringify({ term: term })
             });
             const result = await response.json();
             if (result.success) {
                 renderSearchResults(result.products);
             } else {
-                showToast(result.error, true);
+                searchResultsDiv.innerHTML = '';
             }
         } catch (error) {
             showToast("Error de red al buscar.", true);
         } finally {
             showLoader(false);
         }
+    });    
+
+    // Delegación de eventos para los resultados de búsqueda
+    searchResultsDiv.addEventListener('click', function(e) {
+        if (e.target && e.target.matches('button.add-search-result')) {
+            const productData = JSON.parse(e.target.dataset.product);
+            addProductToList(productData);
+            searchInput.value = '';
+            searchResultsDiv.innerHTML = '';
+        }
     });
 
-    function renderSearchResults(products) {
-        const resultsDiv = document.getElementById('search-results');
-        resultsDiv.innerHTML = '';
-        if (products.length === 0) {
-            resultsDiv.innerHTML = '<p>No se encontraron productos.</p>';
-            return;
-        }
 
+
+    function renderSearchResults(products) {
+        searchResultsDiv.innerHTML = products.length === 0 ? '<p class="no-results">No se encontraron productos.</p>' : '';
         products.forEach(product => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'search-result-item';
-            // Usamos JSON.stringify para pasar el objeto completo del producto al hacer clic
+            // Usamos un atributo data-* para almacenar el objeto del producto de forma segura
             itemDiv.innerHTML = `
                 <span>${product.nombre}</span>
-                <button onclick='addProductFromSearch(${JSON.stringify(product)})'>Añadir</button>
+                <button class="add-search-result" data-product='${JSON.stringify(product)}'>Añadir</button>
             `;
-            resultsDiv.appendChild(itemDiv);
+            searchResultsDiv.appendChild(itemDiv);
         });
     }
 
-    // Iniciar el escáner al cargar la página
-    initScanner();
-});
+    function handleProductListActions(e) {
+        const target = e.target;
+        const productId = target.dataset.productId;
 
+        if (target.matches('.remove-btn')) {
+            delete scannedItems[productId];
+            renderProductList();
+            showToast("Producto eliminado de la lista.");
+        }
+
+        if (target.matches('.quantity-input')) {
+            const newQuantity = parseInt(target.value, 10);
+            if (scannedItems[productId] && newQuantity > 0) {
+                scannedItems[productId].quantity = newQuantity;
+            }
+        }
+    }
+
+    // --- INICIO DE LA APLICACIÓN ---
+    // Iniciar automáticamente al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        initScanner();
+
+        // Listener global para inputs de escáner
+        document.addEventListener('focusin', function(e) {
+            const target = e.target;
+            if (target.classList.contains('barcode-input-auto')) {
+                // Esperar un poco antes de intentar activar para evitar conflictos
+                setTimeout(() => {
+                    if (!quaggaInitialized && !isScannerActive) {
+                        initScanner();
+                    }
+                }, 100);
+            }
+        });
+
+        // También iniciar si se hace clic en cualquier lugar de la página
+        document.addEventListener('click', function() {
+            if (!quaggaInitialized && !isScannerActive) {
+                initScanner();
+            }
+        });
+    });
+});

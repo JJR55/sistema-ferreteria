@@ -1,0 +1,25 @@
+- [ ] Explorar archivos principales del proyecto (main.py, server/server.py)
+- [ ] Revisar módulos de base de datos y GUI
+- [ ] Identificar errores en el código (imports, sintaxis, lógica)
+- [ ] Ejecutar pruebas para encontrar errores de runtime
+- [ ] Corregir errores encontrados
+- [ ] Verificar sincronización web/MongoDB
+- [ ] Probar funcionalidad clave (pos, inventory, etc.)
+- [ ] Preparar para despliegue en Render.com
+- [ ] Hacer funciones web del inventario similares a las de GUI (import/export CSV, PDF, reportes)
+- [ ] Agregar botones faltantes en frontend (import/export, stock bajo)
+- [ ] Mejorar funcionalidades web de cotizaciones (guardar/ver cotizaciones)
+- [ ] Mejorar funcionalidades web de cuentas por pagar (búsqueda/export)
+- [ ] Organizar JavaScript en archivos separados externos
+- [ ] Agregar Bootstrap JS faltante a las plantillas HTML
+- [ ] Completar funcionalidad de cuentas por cobrar web
+- [ ] Completar funcionalidad de cuentas por pagar web
+- [ ] Integrar escáner de barras al área de inventario
+- [ ] Agregar funcionalidades faltantes del POS web (escaneo, búsqueda, cálculos fiscales)
+- [ ] Implementar sistema de impresión web para tickets
+- [ ] Crear barra lateral de navegación elegante y estática
+- [ ] Aplicar diseño POS a todas las páginas web (dashboard, pos, inventory, scanner, quotations) usando el layout base
+- [ ] Implementar solicitud automática de permisos de cámara al cargar página scanner
+- [ ] Agregar beep profesional sonoro cuando se detecta código de barras válido
+- [ ] Transformar dashboard completamente con KPIs modernos, gradientes, animaciones y diseño profesional
+- [ ] Agregar sistema de unidades de medida (unit, libra, pies, metros, etc.) para productos de ferretería

@@ -1,85 +1,240 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Inventario</title>
-    <style>
-        :root {
-            --primary-color: #3484F0;
-            --background-color: #1a1a1a;
-            --surface-color: #2a2d2e;
-            --text-color: #f0f0f0;
-            --border-color: #3a3d3e;
-            --success-color: #28a745;
-            --error-color: #dc3545;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1, h2 { text-align: center; color: var(--text-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; }
-        #interactive { position: relative; width: 100%; max-width: 500px; margin: 20px auto; overflow: hidden; border-radius: 8px; border: 1px solid var(--border-color); }
-        #interactive video, #interactive canvas { max-width: 100%; }
-        #result { margin-top: 20px; padding: 10px; border: 1px solid var(--border-color); background-color: var(--surface-color); border-radius: 8px; text-align: center; }
-        #product-list { margin-top: 20px; }
-        .product-item { background-color: var(--surface-color); border: 1px solid var(--border-color); padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .product-item .info { flex-grow: 1; }
-        .product-item .info span { display: block; }
-        .product-item .info .product-name { font-weight: bold; }
-        .product-item .info .product-stock { font-size: 0.9em; color: #a0a0a0; }
-        .product-item input { width: 60px; text-align: center; background-color: var(--background-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; }
-        .product-item .remove-btn { background-color: var(--error-color); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
-        #confirm-stock { width: 100%; padding: 15px; background-color: var(--success-color); color: white; border: none; cursor: pointer; margin-top: 20px; border-radius: 8px; font-size: 1.2em; font-weight: bold; }
-        #confirm-stock:hover { opacity: 0.9; }
-        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; }
-        #toast.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--primary-color); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; }
-        .search-form { display: flex; gap: 10px; margin-bottom: 10px; }
-        .search-form input { flex-grow: 1; }
-        .search-result-item { background-color: #3a3d3e; padding: 10px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
-        .search-result-item button { padding: 5px 10px; background-color: var(--primary-color); }
-        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Escáner de Inventario</h1>
+{% extends "layout.html" %}
 
-        <!-- Área donde se mostrará la cámara -->
-        <div id="interactive" class="viewport"></div>
+{% block title %}Escáner - Sistema Ferretería{% endblock %}
 
-        <!-- Búsqueda Manual -->
-        <div id="manual-search">
-            <h2>Búsqueda Manual</h2>
-            <div class="search-form">
-                <input type="text" id="search-input" placeholder="Buscar producto por nombre...">
-                <button id="search-button">Buscar</button>
+{% block page_title %}<i class="bi bi-upc-scan"></i> Escáner de Inventario{% endblock %}
+
+{% block breadcrumb %}Captura de Productos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6">
+            <!-- Área de la cámara -->
+            <div class="card shadow-lg">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-camera"></i> Escáner de Códigos de Barras</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Overlay para activar cámara -->
+                    <div id="camera-overlay" class="camera-activation-overlay" style="display: block;">
+                        <div class="overlay-content">
+                            <i class="bi bi-camera-video display-4 text-primary"></i>
+                            <h4 class="mt-3">Activando Cámara</h4>
+                            <p class="text-muted">Haga clic aquí o toque la pantalla para activar el escáner</p>
+                            <button id="activate-camera-btn" class="btn btn-primary btn-lg">
+                                <i class="bi bi-play-circle-fill"></i> Activar Cámara
+                            </button>
+                        </div>
+                    </div>
+                    <div id="interactive" class="text-center bg-dark rounded p-3" style="min-height: 300px; display: none;"></div>
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <small><i class="bi bi-info-circle"></i> La cámara se activa automáticamente al abrir esta página</small>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div id="search-results"></div>
+
+            <!-- Búsqueda Manual -->
+            <div class="card shadow-lg mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-search"></i> Búsqueda Manual</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" id="search-input" class="form-control" placeholder="Buscar producto por nombre...">
+                        <button id="search-button" class="btn btn-primary" type="button">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                    </div>
+                    <div id="search-results" class="mt-2"></div>
+                </div>
+            </div>
         </div>
 
-        <!-- Lista de productos escaneados -->
-        <div id="product-list">
-            <h2>Productos a Ingresar</h2>
-            <!-- Aquí se añadirán dinámicamente los productos escaneados -->
-        </div>
+        <div class="col-md-6">
+            <!-- Lista de productos escaneados -->
+            <div class="card shadow-lg">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Productos a Ingresar</h5>
+                    <span class="badge bg-primary" id="products-count">0 productos</span>
+                </div>
+                <div class="card-body">
+                    <div id="product-list" style="min-height: 400px;">
+                        <!-- Aquí se añadirán dinámicamente los productos escaneados -->
+                        <div class="text-center text-muted mt-5">
+                            <i class="bi bi-upc-scan display-4"></i>
+                            <p>Escanee productos para comenzar...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button id="confirm-stock" class="btn btn-success btn-lg w-100" disabled>
+                        <i class="bi bi-check-circle"></i> Confirmar Ingreso de Stock
+                    </button>
+                </div>
+            </div>
 
-        <button id="confirm-stock">Confirmar Ingreso de Stock</button>
+            <!-- Consola de estado -->
+            <div class="card shadow-lg mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-terminal"></i> Estado del Escáner</h6>
+                </div>
+                <div class="card-body">
+                    <div id="scanner-status" class="alert alert-secondary small">
+                        <i class="bi bi-circle-fill text-muted"></i> Inicializando escáner...
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
-    <!-- Elementos para feedback visual -->
-    <div id="toast"></div>
-    <div id="loader"><div class="spinner"></div></div>
+<!-- Elementos para feedback -->
+<div id="toast" class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="toast-element" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-message"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 
-    <!-- Aquí se cargará el script de escaneo y nuestra lógica -->
-    <!-- Primero, la librería QuaggaJS desde un CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <!-- Luego, nuestro propio script -->
-    <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
-</body>
-</html>
+<div id="loader" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 1050;">
+    <div class="spinner-border text-primary" role="status"></div>
+</div>
+
+{% endblock %}
+
+<!-- Estilos personalizados para el escáner -->
+<style>
+/* Overlay para activación de cámara */
+.camera-activation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0,123,255,0.1), rgba(40,167,69,0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 8px;
+    backdrop-filter: blur(2px);
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 20px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    max-width: 300px;
+    width: 100%;
+}
+
+.overlay-content h4 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.overlay-content p {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Estilos del botón de activación */
+#activate-camera-btn {
+    background: linear-gradient(135deg, #007bff, #6610f2) !important;
+    border: none !important;
+    border-radius: 50px;
+    padding: 12px 30px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+}
+
+#activate-camera-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,123,255,0.4);
+    background: linear-gradient(135deg, #0056b3, #5a0fc8) !important;
+}
+
+/* Estilos del video cuando está activo */
+#interactive.active {
+    display: block !important;
+    position: relative;
+}
+
+#interactive video {
+    width: 100% !important;
+    height: 300px !important;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Indicadores de estado del escáner */
+.scanner-status-ready .alert {
+    background: linear-gradient(135deg, rgba(40,167,69,0.1), rgba(34,197,94,0.1)) !important;
+    border-left: 4px solid #28a745 !important;
+}
+
+.scanner-status-error .alert {
+    background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(255,69,96,0.1)) !important;
+    border-left: 4px solid #dc3545 !important;
+}
+
+.scanner-status-loading .alert {
+    background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,223,125,0.1)) !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
+/* Estilos para resultados de búsqueda */
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    background: #f8f9fa;
+}
+
+.search-result-item:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+}
+
+.search-result-item span {
+    font-weight: 500;
+}
+
+.search-result-item button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.search-result-item button:hover {
+    background: #0056b3;
+}
+
+.no-results {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
+    font-style: italic;
+}
+</style>
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+{% endblock %}

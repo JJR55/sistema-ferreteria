@@ -3,8 +3,8 @@ from tkinter import ttk, messagebox, filedialog
 import database.database as database
 import csv
 from fpdf import FPDF
-
 from .edit_window import EditWindow
+
 class InventoryFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -22,7 +22,7 @@ class InventoryFrame(ctk.CTkFrame):
         self.codigo_entry = ctk.CTkEntry(controls_frame, placeholder_text="Código de Barras")
         self.codigo_entry.pack(side="left", padx=5, pady=5, expand=True, fill="x")
 
-        self.nombre_entry = ctk.CTkEntry(controls_frame, placeholder_text="Nombre del Producto")
+        self.nombre_entry = ctk.CTkEntry(controls_frame, placeholder_text="Descripción del Producto")
         self.nombre_entry.pack(side="left", padx=5, pady=5, expand=True, fill="x")
 
         self.costo_entry = ctk.CTkEntry(controls_frame, placeholder_text="Precio Costo")
@@ -37,12 +37,15 @@ class InventoryFrame(ctk.CTkFrame):
         self.stock_minimo_entry = ctk.CTkEntry(controls_frame, placeholder_text="Inv. Mínimo")
         self.stock_minimo_entry.pack(side="left", padx=5, pady=5, expand=True, fill="x")
 
-        self.departamentos = ["Ferretería", "Repuestos", "Hogar"]
+        self.departamentos = ["Ferretería", "Repuestos", "Hogar", "Electricidad", "Plomería"]
         self.departamento_menu = ctk.CTkOptionMenu(controls_frame, values=self.departamentos)
         self.departamento_menu.pack(side="left", padx=5, pady=5)
 
-        self.add_button = ctk.CTkButton(controls_frame, text="Agregar Producto", command=self.agregar_producto)
-        self.add_button.pack(side="left", padx=5, pady=5)
+        # --- Unidad de Medida ---
+        self.unidad_medidas = ["Unidad", "Par", "Libra", "Kilogramo", "Pies", "Metro", "Metros", "Litro", "Galón", "Caja", "Paquete", "Rollo"]
+        self.unidad_medida_menu = ctk.CTkOptionMenu(controls_frame, values=self.unidad_medidas)
+        self.unidad_medida_menu.pack(side="left", padx=5, pady=5)
+        self.unidad_medida_menu.set("Unidad")  # Valor por defecto
 
         # --- Treeview para mostrar los productos ---
         style = ttk.Style()
@@ -105,12 +108,15 @@ class InventoryFrame(ctk.CTkFrame):
         action_buttons_frame = ctk.CTkFrame(self)
         action_buttons_frame.grid(row=1, column=0, padx=10, pady=(0, 5), sticky="ew")
 
+        self.add_button_second = ctk.CTkButton(action_buttons_frame, text="Agregar Producto", fg_color="#28a745", hover_color="#218838", command=self.agregar_producto)
+        self.add_button_second.pack(side="left", padx=5, pady=5)
+
         self.edit_button = ctk.CTkButton(action_buttons_frame, text="Editar Seleccionado", command=self.editar_producto_seleccionado)
         self.edit_button.pack(side="left", padx=5, pady=5)
 
         self.delete_button = ctk.CTkButton(action_buttons_frame, text="Eliminar Seleccionado", fg_color="#D32F2F", hover_color="#B71C1C", command=self.eliminar_producto_seleccionado)
         self.delete_button.pack(side="left", padx=5, pady=5)
-        
+
         # Separador visual
         ctk.CTkLabel(action_buttons_frame, text="|").pack(side="left", padx=10)
 
@@ -125,24 +131,77 @@ class InventoryFrame(ctk.CTkFrame):
 
 
         self.cargar_productos()
+        # Dentro de __init__ en InventoryFrame
+        self.low_stock_button = ctk.CTkButton(self, text="Reporte Stock Bajo", command=self.mostrar_reporte_stock_bajo)
+        self.low_stock_button.pack(pady=10, padx=20, side="left") # O donde corresponda en tu layout
 
+        # Añade este método a tu clase InventoryFrame
+    
+    def mostrar_reporte_stock_bajo(self):
+        # Crear una nueva ventana emergente (Toplevel)
+        report_window = ctk.CTkToplevel(self)
+        report_window.title("Reporte de Productos con Stock Bajo")
+        report_window.geometry("800x400")
+        report_window.transient(self) # Mantenerla por encima de la ventana principal
+        report_window.grab_set() # Bloquear interacción con la ventana principal
+    
+    # Crear el Treeview para mostrar la tabla
+        columns = ("codigo", "nombre", "stock", "stock_minimo")
+        tree = ttk.Treeview(report_window, columns=columns, show="headings")
+
+        # Definir las cabeceras
+        tree.heading("codigo", text="Código de Barras")
+        tree.heading("nombre", text="Nombre del Producto")
+        tree.heading("stock", text="Stock Actual")
+        tree.heading("stock_minimo", text="Stock Mínimo")
+
+        # Ajustar el ancho de las columnas
+        tree.column("codigo", width=150)
+        tree.column("nombre", width=350)
+        tree.column("stock", width=100, anchor="center")
+        tree.column("stock_minimo", width=100, anchor="center")
+
+        # Obtener los datos de la base de datos
+        productos_bajos = database.obtener_productos_stock_bajo()
+
+        # Insertar los datos en el Treeview
+        for producto in productos_bajos:
+            tree.insert("", "end", values=(
+                producto.get('codigo_barras', 'N/A'),
+                producto.get('nombre', 'N/A'),
+                producto.get('stock', 0),
+                producto.get('stock_minimo', 0)
+            ))
+        
+        tree.pack(fill="both", expand=True, padx=10, pady=10)
+    
     def cargar_productos(self):
         # Limpiar la tabla antes de cargar nuevos datos
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         # Obtener productos de la BD y mostrarlos
-        productos = database.obtener_productos()
+        productos = database.obtener_productos() # Esta función devuelve una lista de diccionarios
         for producto in productos:
-            # producto[5] es 'stock', producto[6] es 'stock_minimo'
-            stock_actual = producto[5]
-            stock_minimo = producto[6]
+            # Extraer valores del diccionario, con valores por defecto si no existen
+            valores_ordenados = (
+                producto.get('id', ''),
+                producto.get('codigo_barras', ''),
+                producto.get('nombre', ''),
+                producto.get('costo', 0.0),
+                producto.get('precio', 0.0),
+                producto.get('stock', 0),
+                producto.get('stock_minimo', 0),
+                producto.get('departamento', '')
+            )
+            stock_actual = producto.get('stock', 0)
+            stock_minimo = producto.get('stock_minimo', 0)
 
             # Asignar el tag 'low_stock' si el stock es bajo y se ha definido un mínimo
             if stock_actual <= stock_minimo and stock_minimo > 0:
-                self.tree.insert("", "end", values=producto, tags=('low_stock',))
+                self.tree.insert("", "end", values=valores_ordenados, tags=('low_stock',))
             else:
-                self.tree.insert("", "end", values=producto)
+                self.tree.insert("", "end", values=valores_ordenados)
 
 
     def agregar_producto(self):
@@ -153,6 +212,7 @@ class InventoryFrame(ctk.CTkFrame):
         stock = self.stock_entry.get()
         stock_minimo = self.stock_minimo_entry.get()
         departamento = self.departamento_menu.get()
+        unidad_medida = self.unidad_medida_menu.get()
 
         # Validaciones básicas
         if not all([codigo, nombre, precio, costo, stock, stock_minimo]):
@@ -170,7 +230,7 @@ class InventoryFrame(ctk.CTkFrame):
 
         # Llamar a la función de la base de datos
         try:
-            database.agregar_producto(codigo, nombre, costo_val, precio_val, stock_val, stock_minimo_val, departamento)
+            database.agregar_producto(codigo, nombre, costo_val, precio_val, stock_val, stock_minimo_val, departamento, unidad_medida)
             messagebox.showinfo("Éxito", "Producto agregado correctamente.")
             self.cargar_productos() # Recargar la lista
             # Limpiar campos de entrada
@@ -180,6 +240,8 @@ class InventoryFrame(ctk.CTkFrame):
             self.precio_entry.delete(0, "end")
             self.stock_entry.delete(0, "end")
             self.stock_minimo_entry.delete(0, "end")
+            # Resetear menú de unidad medida a default
+            self.unidad_medida_menu.set("Unidad")
         except Exception as e:
             messagebox.showerror("Error en la Base de Datos", f"No se pudo agregar el producto: {e}")
 
@@ -220,14 +282,28 @@ class InventoryFrame(ctk.CTkFrame):
 
         try:
             productos = database.obtener_productos()
-            headers = ["ID", "Codigo de Barras", "Nombre", "Departamento", "Precio", "Stock"]
+            # Headers en el orden correcto para importación completa
+            headers = ["Código", "Descripción", "Precio Costo", "Precio Venta", "Stock", "Stock Mín.", "Departamento", "Unidad Medida"]
 
             with open(filepath, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
-                writer.writerows(productos)
-            
-            messagebox.showinfo("Éxito", f"Datos exportados correctamente a {filepath}")
+
+                # Escribir cada producto con todos sus campos
+                for prod in productos:
+                    writer.writerow([
+                        prod.get('codigo_barras', ''),
+                        prod.get('nombre', ''),
+                        prod.get('costo', 0),
+                        prod.get('precio', 0),
+                        prod.get('stock', 0),
+                        prod.get('stock_minimo', 0),
+                        prod.get('departamento', ''),
+                        prod.get('unidad_medida', 'Unidad')
+                    ])
+
+            messagebox.showinfo("Éxito", f"Archivo exportado correctamente a {filepath}\n\n" +
+                                      "El archivo incluye TODOS los campos necesarios para reimportarlo.")
         except Exception as e:
             messagebox.showerror("Error de Exportación", f"No se pudo exportar el archivo CSV: {e}")
 
@@ -271,7 +347,11 @@ class InventoryFrame(ctk.CTkFrame):
         if not filepath:
             return
 
-        if not messagebox.askyesno("Confirmar Importación", "Esto agregará productos desde un archivo CSV. Los productos con códigos de barras duplicados serán omitidos. ¿Desea continuar?"):
+        if not messagebox.askyesno("Confirmar Importación",
+            "Esto agregará productos desde un archivo CSV.\n\n" +
+            "El archivo debe tener columnas:\n" +
+            "Código, Descripción, Precio Costo, Precio Venta, Stock, Stock Mín., Departamento, Unidad Medida\n\n" +
+            "Los productos con códigos de barras duplicados serán omitidos.\n¿Desea continuar?"):
             return
 
         exitosos = 0
@@ -284,25 +364,35 @@ class InventoryFrame(ctk.CTkFrame):
 
                 for row in reader:
                     try:
-                        # Asumiendo el orden: codigo, nombre, depto, precio, stock
-                        if len(row) < 5:
+                        # Orden esperado: Código, Descripción, Precio Costo, Precio Venta, Stock, Stock Mín., Departamento, Unidad Medida
+                        if len(row) < 8:
                             fallidos += 1
                             continue # Omitir filas incompletas
 
-                        codigo = row[0]
-                        nombre = row[1]
-                        departamento = row[2]
-                        precio = float(row[3])
-                        stock = int(row[4])
+                        codigo = row[0].strip()
+                        nombre = row[1].strip()
+                        costo = float(row[2]) if row[2].strip() else 0
+                        precio = float(row[3]) if row[3].strip() else 0
+                        stock = int(float(row[4])) if row[4].strip() else 0
+                        stock_minimo = int(float(row[5])) if row[5].strip() else 0
+                        departamento = row[6].strip()
+                        unidad_medida = row[7].strip() if row[7].strip() else "Unidad"
 
-                        database.agregar_producto(codigo, nombre, departamento, precio, stock)
+                        # Validar campos obligatorios
+                        if not codigo or not nombre or not departamento:
+                            fallidos += 1
+                            continue
+
+                        database.agregar_producto(codigo, nombre, costo, precio, stock, stock_minimo, departamento, unidad_medida)
                         exitosos += 1
 
-                    except ValueError: # Error al convertir precio/stock
+                    except ValueError as ve:
+                        print(f"Error de conversión en fila: {ve}")
                         fallidos += 1
-                    except Exception: # Otro error (ej. código duplicado)
+                    except Exception as e:
+                        print(f"Error al importar producto: {e}")
                         fallidos += 1
-            
+
             summary_message = f"Importación completada.\n\nProductos agregados: {exitosos}\nFilas omitidas (errores o duplicados): {fallidos}"
             messagebox.showinfo("Resumen de Importación", summary_message)
             self.cargar_productos()

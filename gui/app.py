@@ -7,6 +7,9 @@ from .login_frame import LoginFrame
 from .user_management_frame import UserManagementFrame
 from .returns_frame import ReturnsFrame
 from .accounts_payable_frame import AccountsPayableFrame
+from .clients_frame import ClientsFrame # Importar nuevo frame de clientes
+from .quotation_frame import QuotationFrame # Importar nuevo frame de cotizaciones
+from .accounts_receivable_frame import AccountsReceivableFrame # Importar nuevo frame de cuentas por cobrar
 
 class App(ctk.CTk):
     def __init__(self):
@@ -20,11 +23,11 @@ class App(ctk.CTk):
         # Configurar el layout principal (1x2)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
-
+        
         # --- Frame de Navegación (Izquierda) ---
         self.navigation_frame = ctk.CTkFrame(self, corner_radius=0)
         self.navigation_frame.grid(row=0, column=0, sticky="nsew")
-        self.navigation_frame.grid_rowconfigure(6, weight=1)
+        self.navigation_frame.grid_rowconfigure(10, weight=1) # Apuntar a la fila después del último botón
 
         self.navigation_frame_label = ctk.CTkLabel(self.navigation_frame, text="Ferretería XYZ",
                                                    font=ctk.CTkFont(size=20, weight="bold"))
@@ -36,20 +39,29 @@ class App(ctk.CTk):
         self.btn_punto_venta = ctk.CTkButton(self.navigation_frame, text="Punto de Venta", command=self.mostrar_frame_pos)
         self.btn_punto_venta.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
 
+        self.btn_cotizaciones = ctk.CTkButton(self.navigation_frame, text="Cotizaciones", command=self.mostrar_frame_cotizaciones)
+        self.btn_cotizaciones.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+
         self.btn_reportes = ctk.CTkButton(self.navigation_frame, text="Reportes", command=self.mostrar_frame_reportes)
-        self.btn_reportes.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_reportes.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
 
         self.btn_devoluciones = ctk.CTkButton(self.navigation_frame, text="Devoluciones", command=self.mostrar_frame_devoluciones)
-        self.btn_devoluciones.grid(row=4, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_devoluciones.grid(row=5, column=0, padx=20, pady=10, sticky="ew")
+
+        self.btn_clientes = ctk.CTkButton(self.navigation_frame, text="Clientes", command=self.mostrar_frame_clientes)
+        self.btn_clientes.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+
+        self.btn_cuentas_cobrar = ctk.CTkButton(self.navigation_frame, text="Cuentas por Cobrar", command=self.mostrar_frame_cuentas_cobrar)
+        self.btn_cuentas_cobrar.grid(row=7, column=0, padx=20, pady=10, sticky="ew")
 
         self.btn_cuentas_pagar = ctk.CTkButton(self.navigation_frame, text="Cuentas por Pagar", command=self.mostrar_frame_cuentas_pagar)
-        self.btn_cuentas_pagar.grid(row=5, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_cuentas_pagar.grid(row=8, column=0, padx=20, pady=10, sticky="ew")
 
         self.btn_gestion_usuarios = ctk.CTkButton(self.navigation_frame, text="Gestionar Usuarios", command=self.mostrar_frame_gestion_usuarios)
-        self.btn_gestion_usuarios.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_gestion_usuarios.grid(row=9, column=0, padx=20, pady=10, sticky="ew")
 
         self.logout_button = ctk.CTkButton(self.navigation_frame, text="Cerrar Sesión", fg_color="#D32F2F", hover_color="#B71C1C", command=self.logout)
-        self.logout_button.grid(row=7, column=0, padx=20, pady=20, sticky="s")
+        self.logout_button.grid(row=11, column=0, padx=20, pady=20, sticky="s")
 
         # --- Frame Principal (Derecha) ---
         self.main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
@@ -75,11 +87,15 @@ class App(ctk.CTk):
         if self.current_user['role'] == 'Cajero':
             self.btn_inventario.grid_remove()
             self.btn_reportes.grid_remove()
+            self.btn_clientes.grid_remove()
+            self.btn_cuentas_cobrar.grid_remove()
             self.btn_cuentas_pagar.grid_remove()
             self.btn_gestion_usuarios.grid_remove()
         else: # Administrador
             self.btn_inventario.grid()
             self.btn_reportes.grid()
+            self.btn_clientes.grid()
+            self.btn_cuentas_cobrar.grid()
             self.btn_cuentas_pagar.grid()
             self.btn_gestion_usuarios.grid()
 
@@ -137,3 +153,22 @@ class App(ctk.CTk):
         for widget in self.main_frame.winfo_children():
             widget.destroy()
         self.accounts_payable_frame = AccountsPayableFrame(master=self.main_frame)
+
+    def mostrar_frame_clientes(self):
+        # Limpiar el frame principal
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        self.clients_frame = ClientsFrame(master=self.main_frame)
+
+    def mostrar_frame_cuentas_cobrar(self):
+        # Limpiar el frame principal
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        self.accounts_receivable_frame = AccountsReceivableFrame(master=self.main_frame)
+
+    def mostrar_frame_cotizaciones(self):
+        # Limpiar el frame principal
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        self.quotation_frame = QuotationFrame(master=self.main_frame)
+        self.quotation_frame.on_show()

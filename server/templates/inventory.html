@@ -1,0 +1,825 @@
+{% extends "layout.html" %}
+
+{% block title %}Inventario - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-box-seam"></i> Gestión de Inventario{% endblock %}
+
+{% block breadcrumb %}Control de Productos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header simple -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="bi bi-box-seam-fill text-primary"></i> Gestión de Inventario
+                </h3>
+                <small class="text-muted">Sistema de control de productos</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar simplificado -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-2 align-items-center">
+                        <!-- Botones de acción principales -->
+                        <div class="col-xl-8 col-lg-7">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#productModal" id="add-product-btn">
+                                    <i class="bi bi-plus-circle-fill"></i> Agregar Producto
+                                </button>
+                                <a href="{{ url_for('scanner_page') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-upc-scan"></i> Escáner de Barras
+                                </a>
+                                <button class="btn btn-outline-warning" id="low-stock-btn">
+                                    <i class="bi bi-exclamation-triangle"></i> Stock Bajo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Botones de importación/exportación -->
+                        <div class="col-xl-4 col-lg-5">
+                            <div class="d-flex justify-content-end flex-wrap gap-2">
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-arrow-up-circle"></i> Importar
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</button></li>
+                                    </ul>
+                                </div>
+
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-arrow-down-circle"></i> Exportar
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" id="export-csv-btn"><i class="bi bi-filetype-csv"></i> CSV Completo</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Completo</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="#" id="export-low-stock-csv-btn"><i class="bi bi-filetype-csv"></i> CSV Stock Bajo</a></li>
+                                        <li><a class="dropdown-item" href="#" id="export-low-stock-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Stock Bajo</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de búsqueda y filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-8">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="inventory-search" class="form-control" placeholder="Buscar por nombre, código...">
+                                <button class="btn btn-outline-secondary" id="clear-search-btn" title="Limpiar búsqueda">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-funnel-fill"></i></span>
+                                <select class="form-select" id="department-filter">
+                                    <option value="">Todos los departamentos</option>
+                                    <option value="Ferretería">Ferretería</option>
+                                    <option value="Repuestos">Repuestos</option>
+                                    <option value="Hogar">Hogar</option>
+                                    <option value="Electricidad">Electricidad</option>
+                                    <option value="Plomería">Plomería</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" id="clear-filter-btn" title="Quitar filtro de departamento">
+                                    <i class="bi bi-filter-circle-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul text-primary"></i> Lista de Productos
+                        </h5>
+                        <div id="table-info" class="text-muted small">
+                            <!-- Información dinámica se cargará aquí -->
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descripción</th>
+                                    <th>Precio Costo (RD$)</th>
+                                    <th>Precio Venta (RD$)</th>
+                                    <th>Stock</th>
+                                    <th>Inv. Mínimo</th>
+                                    <th>Departamento</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body">
+                                <!-- Las filas se insertarán aquí con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mensaje cuando no hay productos -->
+                    <div class="text-center py-5" id="empty-state" style="display: none;">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">No hay productos</h5>
+                        <p class="text-muted">Comienza agregando productos al inventario</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                            <i class="bi bi-plus-circle"></i> Agregar Primer Producto
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Importar CSV -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">Importar CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Seleccione un archivo CSV para importar productos. El archivo debe tener las columnas: codigo, nombre, departamento, precio, stock</p>
+                <form id="import-form" enctype="multipart/form-data">
+                    <input type="file" class="form-control" id="csv-file" accept=".csv" required>
+                </form>
+                <div id="import-progress" class="mt-3 d-none">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="import-btn">Importar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar/Editar Producto -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">Agregar Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="product-form">
+                    <input type="hidden" id="product-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="codigo_barras" class="form-label">Código de Barras</label>
+                            <input type="text" class="form-control" id="codigo_barras" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nombre" class="form-label">Descripción del Producto</label>
+                            <input type="text" class="form-control" id="nombre" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="costo" class="form-label">Precio Costo</label>
+                            <input type="number" class="form-control" id="costo" step="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="precio" class="form-label">Precio Venta</label>
+                            <input type="number" class="form-control" id="precio" step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="stock" class="form-label">Stock</label>
+                            <input type="number" class="form-control" id="stock" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="stock_minimo" class="form-label">Stock Mínimo</label>
+                            <input type="number" class="form-control" id="stock_minimo" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="departamento" class="form-label">Departamento</label>
+                            <select class="form-select" id="departamento">
+                                <option>Ferretería</option>
+                                <option>Repuestos</option>
+                                <option>Hogar</option>
+                                <option>Electricidad</option>
+                                <option>Plomería</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="unidad_medida" class="form-label">Unidad de Medida</label>
+                            <select class="form-select" id="unidad_medida">
+                                <option value="Unidad">Unidad</option>
+                                <option value="Par">Par</option>
+                                <option value="Libra">Libra</option>
+                                <option value="Kilogramo">Kilogramo</option>
+                                <option value="Pies">Pies</option>
+                                <option value="Metro">Metro</option>
+                                <option value="Metros">Metros</option>
+                                <option value="Litro">Litro</option>
+                                <option value="Galón">Galón</option>
+                                <option value="Caja">Caja</option>
+                                <option value="Paquete">Paquete</option>
+                                <option value="Rollo">Rollo</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="save-product-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+<style>
+/* === INDICADORES VISUALES PERSONALIZADOS === */
+.visual-indicator {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-filter {
+    background: linear-gradient(135deg, #17a2b8, #0dcaf0);
+    color: white;
+    border: 1px solid #0dcaf0;
+}
+
+.badge-search {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #212529;
+    border: 1px solid #fd7e14;
+}
+
+/* === INDICADORES DE STOCK === */
+.low-stock .badge {
+    background: #dc3545 !important;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+.table tbody tr.low-stock {
+    background-color: rgba(220, 53, 69, 0.05);
+    border-left: 3px solid #dc3545;
+}
+
+.stock-warning {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.stock-good {
+    color: #28a745;
+    font-weight: 500;
+}
+
+/* === BOTONES COMPACTOS === */
+.btn.btn-sm {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* === BADGES DE DEPARTAMENTO === */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+/* === ESTADO VACÍO === */
+#empty-state {
+    display: none;
+}
+
+#empty-state.show {
+    display: flex !important;
+}
+
+/* === ANIMACIONES SUAVES === */
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+
+    .dropdown {
+        display: inline-block;
+        width: 100%;
+    }
+
+    .dropdown-menu {
+        width: 100%;
+    }
+}
+</style>
+
+{% block extra_scripts %}
+<!-- jsPDF for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+    const { jsPDF } = window.jspdf;
+    let allProducts = [];
+    const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+    const productForm = document.getElementById('product-form');
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+    }
+
+    function renderInventoryTable(products) {
+        const tableBody = document.getElementById('inventory-table-body');
+        const emptyState = document.getElementById('empty-state');
+        const tableInfo = document.getElementById('table-info');
+
+        tableBody.innerHTML = '';
+
+        if (products.length === 0) {
+            if (emptyState) emptyState.style.display = 'flex';
+            if (tableInfo) tableInfo.innerHTML = '';
+        } else {
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Calcular estadísticas
+            const totalProducts = products.length;
+            const lowStockCount = products.filter(p => p.stock <= p.stock_minimo).length;
+            const totalValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.precio || 0)), 0);
+
+            if (tableInfo) {
+                tableInfo.innerHTML = `
+                    <span class="info-item"><i class="bi bi-boxes"></i>${totalProducts} productos</span>
+                    <span class="info-item"><i class="bi bi-exclamation-triangle"></i>${lowStockCount} bajo stock</span>
+                    <span class="info-item"><i class="bi bi-cash"></i>${formatCurrency(totalValue)} valor total</span>
+                `;
+            }
+
+            products.forEach(p => {
+                const row = document.createElement('tr');
+                const isLowStock = (p.stock || 0) <= (p.stock_minimo || 0);
+                const stockClass = isLowStock ? 'stock-warning' : 'stock-good';
+
+                if (isLowStock) {
+                    row.classList.add('low-stock');
+                }
+
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex align-items-center">
+                            ${p.codigo_barras || 'Sin código'}
+                            ${isLowStock ? '<span class="badge">BAJO</span>' : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold text-truncate" style="max-width: 250px;" title="${p.nombre || ''}">
+                            ${p.nombre || 'Sin nombre'}
+                        </div>
+                    </td>
+                    <td class="text-nowrap">${formatCurrency(p.costo || 0)}</td>
+                    <td class="text-nowrap">${formatCurrency(p.precio || 0)}</td>
+                    <td class="text-center">
+                        <span class="${stockClass}">${p.stock || 0}</span>
+                    </td>
+                    <td class="text-center">${p.stock_minimo || 0}</td>
+                    <td>
+                        <span class="badge" style="background: var(--accent-color);">${p.departamento || 'Sin departamento'}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-warning btn-sm edit-btn" data-id="${p.id}" title="Editar">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${p.id}" title="Eliminar">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+    }
+
+    function filterProducts() {
+        const searchTerm = document.getElementById('inventory-search').value.toLowerCase();
+        const departmentFilter = document.getElementById('department-filter').value;
+        const filtered = allProducts.filter(p => {
+            // Búsqueda por texto en nombre o código
+            const matchesSearch = searchTerm === '' ||
+                p.nombre.toLowerCase().includes(searchTerm) ||
+                p.codigo_barras.toLowerCase().includes(searchTerm);
+
+            // Filtro por departamento
+            const matchesDepartment = departmentFilter === '' ||
+                p.departamento === departmentFilter;
+
+            return matchesSearch && matchesDepartment;
+        });
+
+        renderInventoryTable(filtered);
+
+        // Actualizar estado visual de filtros
+        updateFilterIndicators();
+    }
+
+    function updateFilterIndicators() {
+        const searchTerm = document.getElementById('inventory-search').value;
+        const departmentFilter = document.getElementById('department-filter').value;
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        const clearFilterBtn = document.getElementById('clear-filter-btn');
+
+        // Actualizar botón de limpiar búsqueda
+        if (searchTerm) {
+            clearSearchBtn.classList.add('text-warning');
+            clearSearchBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+        } else {
+            clearSearchBtn.classList.remove('text-warning');
+            clearSearchBtn.innerHTML = '<i class="bi bi-x-circle"></i>';
+        }
+
+        // Actualizar botón de limpiar filtro departamento
+        if (departmentFilter) {
+            clearFilterBtn.classList.add('text-info');
+            clearFilterBtn.innerHTML = '<i class="bi bi-filter-circle-fill"></i>';
+        } else {
+            clearFilterBtn.classList.remove('text-info');
+            clearFilterBtn.innerHTML = '<i class="bi bi-filter-circle"></i>';
+        }
+    }
+
+    async function fetchInventory() {
+        const response = await fetch('/api/products');
+        allProducts = await response.json();
+        filterProducts();
+    }
+
+    // Event listeners para filtros
+    document.getElementById('inventory-search').addEventListener('keyup', filterProducts);
+    document.getElementById('department-filter').addEventListener('change', filterProducts);
+
+    // Botón para limpiar búsqueda de texto
+    document.getElementById('clear-search-btn').addEventListener('click', () => {
+        document.getElementById('inventory-search').value = '';
+        filterProducts();
+        document.getElementById('inventory-search').focus();
+    });
+
+    // Botón para quitar filtro de departamento
+    document.getElementById('clear-filter-btn').addEventListener('click', () => {
+        document.getElementById('department-filter').value = '';
+        filterProducts();
+    });
+
+    document.getElementById('add-product-btn').addEventListener('click', () => {
+        document.getElementById('productModalLabel').textContent = 'Agregar Producto';
+        productForm.reset();
+        document.getElementById('product-id').value = '';
+    });
+
+    document.getElementById('inventory-table-body').addEventListener('click', (e) => {
+        if (e.target.closest('.edit-btn')) {
+            const id = e.target.closest('.edit-btn').dataset.id;
+            const product = allProducts.find(p => p.id == id);
+            document.getElementById('productModalLabel').textContent = 'Editar Producto';
+            document.getElementById('product-id').value = product.id;
+            document.getElementById('codigo_barras').value = product.codigo_barras;
+            document.getElementById('nombre').value = product.nombre;
+            document.getElementById('costo').value = product.costo;
+            document.getElementById('precio').value = product.precio;
+            document.getElementById('stock').value = product.stock;
+            document.getElementById('stock_minimo').value = product.stock_minimo;
+            document.getElementById('departamento').value = product.departamento;
+            productModal.show();
+        }
+        if (e.target.closest('.delete-btn')) {
+            const id = e.target.closest('.delete-btn').dataset.id;
+            const product = allProducts.find(p => p.id == id);
+            if (confirm(`¿Está seguro de que desea eliminar el producto "${product.nombre}"?`)) {
+                deleteProduct(id);
+            }
+        }
+    });
+
+    document.getElementById('save-product-btn').addEventListener('click', async () => {
+        const id = document.getElementById('product-id').value;
+        const data = {
+            codigo_barras: document.getElementById('codigo_barras').value,
+            nombre: document.getElementById('nombre').value,
+            costo: parseFloat(document.getElementById('costo').value),
+            precio: parseFloat(document.getElementById('precio').value),
+            stock: parseInt(document.getElementById('stock').value),
+            stock_minimo: parseInt(document.getElementById('stock_minimo').value),
+            departamento: document.getElementById('departamento').value,
+        };
+
+        if (!data.codigo_barras || !data.nombre) {
+            alert('Código de Barras y Nombre son obligatorios.');
+            return;
+        }
+
+        const url = id ? `/api/product/update/${id}` : '/api/product/add';
+        const method = 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                productModal.hide();
+                fetchInventory();
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Ocurrió un error de red.');
+        }
+    });
+
+    async function deleteProduct(id) {
+        try {
+            const response = await fetch(`/api/product/delete/${id}`, { method: 'POST' });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                fetchInventory();
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Ocurrió un error de red.');
+        }
+    }
+
+    // Funcionalidades adicionales
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+        window.location.href = '/api/products/export/csv';
+    });
+
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+        window.location.href = '/api/products/export/pdf';
+    });
+
+    document.getElementById('low-stock-btn').addEventListener('click', async () => {
+        const response = await fetch('/api/reports/low_stock');
+        const data = await response.json();
+        if (data.success) {
+            renderInventoryTable(data.products);
+            // Limpiar filtros cuando se muestra stock bajo
+            document.getElementById('inventory-search').value = '';
+            document.getElementById('department-filter').value = '';
+            updateFilterIndicators();
+        }
+    });
+
+    document.getElementById('import-btn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('csv-file');
+        if (!fileInput.files[0]) {
+            alert('Por favor seleccione un archivo CSV.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        document.getElementById('import-progress').classList.remove('d-none');
+
+        try {
+            const response = await fetch('/api/products/import/csv', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+                fetchInventory();
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Ocurrió un error durante la importación.');
+        } finally {
+            document.getElementById('import-progress').classList.add('d-none');
+        }
+    });
+
+    // Exportar productos bajos a CSV
+    document.getElementById('export-low-stock-csv-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        try {
+            const response = await fetch('/api/reports/low_stock');
+            const data = await response.json();
+
+            if (data.success && data.products.length > 0) {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Código,Nombre,Stock Actual,Mínimo,Necesario Comprar,Departamento,Precio Costo,Precio Venta\n";
+
+                data.products.forEach(product => {
+                    const necesario = product.stock_minimo - product.stock;
+                    csvContent += `"${product.codigo_barras || ''}","${product.nombre || ''}",${product.stock || 0},${product.stock_minimo || 0},${necesario},"${product.departamento || ''}",${product.costo || 0},${product.precio || 0}\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `productos_bajos_stock_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                alert(`✅ Se exportaron ${data.products.length} productos con stock bajo a CSV.`);
+            } else {
+                alert('No hay productos con stock bajo para exportar.');
+            }
+        } catch (error) {
+            alert('Error al obtener los datos de stock bajo.');
+        }
+    });
+
+    // Exportar productos bajos a PDF
+    document.getElementById('export-low-stock-pdf-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
+
+        try {
+            const response = await fetch('/api/reports/low_stock');
+            const data = await response.json();
+
+            if (data.success && data.products.length > 0) {
+                const doc = new jsPDF();
+                const pageWidth = doc.internal.pageSize.width;
+                const pageHeight = doc.internal.pageSize.height;
+                const margin = 20;
+                let yPosition = margin;
+
+                // Encabezado
+                doc.setFontSize(18);
+                doc.setTextColor(40, 40, 40);
+                doc.text('REPORTE DE PRODUCTOS CON STOCK BAJO', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 10;
+
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Fecha: ${new Date().toLocaleDateString('es-DO')}`, pageWidth / 2, yPosition, { align: 'center' });
+                doc.text(`Total productos: ${data.products.length}`, pageWidth / 2, yPosition + 5, { align: 'center' });
+                yPosition += 20;
+
+                // Línea divisoria
+                doc.setDrawColor(200, 200, 200);
+                doc.line(margin, yPosition, pageWidth - margin, yPosition);
+                yPosition += 10;
+
+                // Cabeceras de tabla
+                doc.setFontSize(10);
+                doc.setTextColor(40, 40, 40);
+                const headers = ['Producto', 'Stock Actual', 'Mínimo', 'Comprar', 'Precio Costo'];
+                const columnWidths = [80, 25, 25, 20, 30];
+                let xPosition = margin;
+
+                headers.forEach((header, index) => {
+                    doc.text(header, xPosition, yPosition);
+                    xPosition += columnWidths[index];
+                });
+
+                yPosition += 5;
+
+                // Línea bajo cabeceras
+                doc.line(margin, yPosition, pageWidth - margin, yPosition);
+                yPosition += 5;
+
+                // Contenido de la tabla
+                doc.setFontSize(9);
+                let rowCount = 0;
+                const maxRowsPerPage = 25;
+
+                data.products.forEach(product => {
+                    // Verificar si necesita nueva página
+                    if (rowCount >= maxRowsPerPage) {
+                        doc.addPage();
+                        yPosition = margin;
+                        rowCount = 0;
+
+                        // Repetir cabeceras en nueva página
+                        doc.setFontSize(10);
+                        xPosition = margin;
+                        headers.forEach((header, index) => {
+                            doc.text(header, xPosition, yPosition);
+                            xPosition += columnWidths[index];
+                        });
+                        yPosition += 5;
+                        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+                        yPosition += 5;
+                        doc.setFontSize(9);
+                    }
+
+                    const necesario = Math.max(0, product.stock_minimo - product.stock);
+                    const productName = product.nombre.length > 25 ? product.nombre.substring(0, 22) + '...' : product.nombre;
+
+                    xPosition = margin;
+                    const rowData = [
+                        productName,
+                        product.stock?.toString() || '0',
+                        product.stock_minimo?.toString() || '0',
+                        necesario.toString(),
+                        formatCurrency(product.costo || 0)
+                    ];
+
+                    rowData.forEach((cell, index) => {
+                        doc.text(cell, xPosition, yPosition);
+                        xPosition += columnWidths[index];
+                    });
+
+                    yPosition += 5;
+                    rowCount++;
+
+                    // Agregar producto si comprado tan bajo capacidad
+                    if (necesario > 0 && product.stock <= product.stock_minimo * 0.5) {
+                        doc.setTextColor(220, 53, 69);
+                        doc.text('¡CRÍTICO!', xPosition - columnWidths[columnWidths.length - 1] - 20, yPosition - 2.5);
+                        doc.setTextColor(40, 40, 40);
+                    }
+                });
+
+                // Pie de página
+                const totalPages = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPages; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                    doc.text('Sistema Ferretería - Reporte generado automáticamente', pageWidth / 2, pageHeight - 5, { align: 'center' });
+                }
+
+                // Guardar PDF
+                const fileName = `productos_bajos_stock_${new Date().toISOString().split('T')[0]}.pdf`;
+                doc.save(fileName);
+
+                alert(`✅ PDF generado exitosamente con ${data.products.length} productos.`);
+            } else {
+                alert('No hay productos con stock bajo para exportar.');
+            }
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            alert('Error al generar el PDF. Revisa la consola para más detalles.');
+        }
+    });
+
+    fetchInventory();
+</script>
+{% endblock %}

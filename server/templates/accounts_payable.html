@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuentas por Pagar - Sistema Ferretería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1><i class="bi bi-file-earmark-arrow-down-fill"></i> Cuentas por Pagar</h1>
+            <div>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoiceModal"><i class="bi bi-plus-circle-fill"></i> Agregar Factura</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary"><i class="bi bi-arrow-left-circle"></i> Volver al Dashboard</a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5>Buscar Facturas</h5>
+            </div>
+            <div class="card-body">
+                <input type="text" id="search-input" class="form-control mb-3" placeholder="Buscar por proveedor, factura o monto...">
+                <button class="btn btn-secondary" id="clear-search-btn">Limpiar Búsqueda</button>
+                <button class="btn btn-primary ms-2" id="export-csv-btn">Exportar CSV</button>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Proveedor</th>
+                                <th>No. Factura</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Días Restantes</th>
+                                <th>Monto</th>
+                                <th>Moneda</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-payable-body">
+                            <!-- Las filas se insertarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Factura -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="invoiceModalLabel">Agregar Factura por Pagar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="invoice-form">
+                        <div class="mb-3">
+                            <label for="proveedor" class="form-label">Proveedor</label>
+                            <select class="form-select" id="proveedor" required></select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="numero_factura" class="form-label">Número de Factura</label>
+                                <input type="text" class="form-control" id="numero_factura" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="monto" class="form-label">Monto</label>
+                                <input type="number" class="form-control" id="monto" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_emision" class="form-label">Fecha de Emisión</label>
+                                <input type="date" class="form-control" id="fecha_emision" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento</label>
+                                <input type="date" class="form-control" id="fecha_vencimiento" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="moneda" class="form-label">Moneda</label>
+                            <select class="form-select" id="moneda">
+                                <option>DOP</option>
+                                <option>USD</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="save-invoice-btn">Guardar Factura</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
+        let allAccountsPayable = [];
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+        }
+
+        async function fetchAccountsPayable() {
+            const response = await fetch('/api/accounts_payable');
+            allAccountsPayable = await response.json();
+            renderAccountsPayable(allAccountsPayable);
+        }
+
+        function renderAccountsPayable(data) {
+            const tableBody = document.getElementById('accounts-payable-body');
+            tableBody.innerHTML = '';
+
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0); // Resetear tiempo para comparación precisa
+
+            data.forEach(cuenta => {
+                const fechaVencimiento = new Date(cuenta.fecha_vencimiento);
+                fechaVencimiento.setHours(0, 0, 0, 0);
+
+                // Calcular días restantes
+                const tiempoRestante = fechaVencimiento - hoy;
+                const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+
+                // Determinar clase CSS y color basado en días restantes
+                let diasClass = '';
+                let diasText = '';
+
+                if (diasRestantes < 0) {
+                    diasClass = 'text-danger fw-bold bg-danger-subtle';
+                    diasText = `VENCIDA (${Math.abs(diasRestantes)} días)`;
+                } else if (diasRestantes === 0) {
+                    diasClass = 'text-danger fw-bold bg-danger-subtle';
+                    diasText = 'VENCE HOY';
+                } else if (diasRestantes <= 3) {
+                    diasClass = 'text-warning fw-bold bg-warning-subtle';
+                    diasText = `${diasRestantes} días`;
+                } else if (diasRestantes <= 7) {
+                    diasClass = 'text-primary fw-bold';
+                    diasText = `${diasRestantes} días`;
+                } else {
+                    diasClass = 'text-success fw-bold';
+                    diasText = `${diasRestantes} días`;
+                }
+
+                const row = document.createElement('tr');
+                // Agregar clase a la fila entera si está vencida
+                if (diasRestantes < 0) {
+                    row.className = 'table-danger';
+                }
+
+                row.innerHTML = `
+                    <td>${cuenta.proveedor}</td>
+                    <td>${cuenta.numero_factura}</td>
+                    <td>${new Date(cuenta.fecha_emision).toLocaleDateString('es-DO')}</td>
+                    <td>${new Date(cuenta.fecha_vencimiento).toLocaleDateString('es-DO')}</td>
+                    <td class="${diasClass}">${diasText}</td>
+                    <td>${cuenta.monto.toFixed(2)}</td>
+                    <td>${cuenta.moneda}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="markAsPaid('${cuenta._id}')">Marcar como Pagada</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Búsqueda
+        document.getElementById('search-input').addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            if (!term) {
+                renderAccountsPayable(allAccountsPayable);
+                return;
+            }
+            const filtered = allAccountsPayable.filter(c =>
+                c.proveedor.toLowerCase().includes(term) ||
+                c.numero_factura.toLowerCase().includes(term) ||
+                c.monto.toString().includes(term)
+            );
+            renderAccountsPayable(filtered);
+        });
+
+        // Limpiar búsqueda
+        document.getElementById('clear-search-btn').addEventListener('click', () => {
+            document.getElementById('search-input').value = '';
+            renderAccountsPayable(allAccountsPayable);
+        });
+
+        // Exportar CSV
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Proveedor,No Factura,Fecha Emision,Fecha Vencimiento,Monto,Moneda\n";
+
+            allAccountsPayable.forEach(c => {
+                const fechaEmision = new Date(c.fecha_emision).toLocaleDateString();
+                const fechaVencimiento = new Date(c.fecha_vencimiento).toLocaleDateString();
+                csvContent += `${c.proveedor},${c.numero_factura},${fechaEmision},${fechaVencimiento},${c.monto},${c.moneda}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "cuentas_por_pagar.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        async function markAsPaid(facturaId) {
+            if (confirm('¿Está seguro de que desea marcar esta factura como pagada?')) {
+                await fetch(`/api/accounts_payable/pay/${facturaId}`, { method: 'POST' });
+                fetchAccountsPayable();
+            }
+        }
+
+        async function loadSuppliers() {
+            const response = await fetch('/api/suppliers');
+            const suppliers = await response.json();
+            const select = document.getElementById('proveedor');
+            select.innerHTML = '<option selected disabled value="">Seleccione un proveedor...</option>';
+            suppliers.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s._id;
+                option.textContent = s.nombre;
+                select.appendChild(option);
+            });
+        }
+
+        document.getElementById('save-invoice-btn').addEventListener('click', async () => {
+            const data = {
+                proveedor_id: document.getElementById('proveedor').value,
+                numero_factura: document.getElementById('numero_factura').value,
+                fecha_emision: document.getElementById('fecha_emision').value,
+                fecha_vencimiento: document.getElementById('fecha_vencimiento').value,
+                monto: document.getElementById('monto').value,
+                moneda: document.getElementById('moneda').value,
+            };
+
+            if (!data.proveedor_id || !data.numero_factura || !data.monto) {
+                alert('Proveedor, Número de Factura y Monto son obligatorios.');
+                return;
+            }
+
+            const response = await fetch('/api/accounts_payable/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+            if (result.success) {
+                invoiceModal.hide();
+                document.getElementById('invoice-form').reset();
+                fetchAccountsPayable();
+            }
+        });
+
+        fetchAccountsPayable();
+        loadSuppliers();
+    </script>
+</body>
+</html>

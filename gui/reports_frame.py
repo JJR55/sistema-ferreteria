@@ -40,14 +40,13 @@ class ReportsFrame(ctk.CTkFrame):
         controls_frame = ctk.CTkFrame(tab)
         controls_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-        ctk.CTkLabel(controls_frame, text="Mostrar productos con stock igual o menor a:").pack(side="left", padx=(10, 5))
-        
-        self.stock_threshold_entry = ctk.CTkEntry(controls_frame, width=60)
-        self.stock_threshold_entry.insert(0, "5")
-        self.stock_threshold_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(controls_frame, text="Este reporte muestra los productos cuyo stock actual es igual o menor a su stock mínimo definido.", font=ctk.CTkFont(size=14)).pack(side="left", padx=10)
 
-        generate_button = ctk.CTkButton(controls_frame, text="Generar Reporte", command=self.generar_reporte_stock_bajo)
+        generate_button = ctk.CTkButton(controls_frame, text="Actualizar Reporte", command=self.generar_reporte_stock_bajo)
         generate_button.pack(side="left", padx=10)
+
+        export_button = ctk.CTkButton(controls_frame, text="Exportar a PDF", command=self.exportar_stock_bajo_pdf)
+        export_button.pack(side="left", padx=10)
 
         # --- Tabla para el Reporte de Inventario Bajo ---
         tree_frame = ctk.CTkFrame(tab)
@@ -55,12 +54,14 @@ class ReportsFrame(ctk.CTkFrame):
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
 
-        self.low_stock_tree = ttk.Treeview(tree_frame, columns=("Código", "Nombre", "Departamento", "Stock Actual"), show='headings')
+        self.low_stock_tree = ttk.Treeview(tree_frame, columns=("Código", "Nombre", "Departamento", "Stock Actual", "Stock Mínimo"), show='headings')
         self.low_stock_tree.heading("Código", text="Código de Barras")
         self.low_stock_tree.heading("Nombre", text="Nombre del Producto")
         self.low_stock_tree.heading("Departamento", text="Departamento")
         self.low_stock_tree.heading("Stock Actual", text="Stock Actual")
+        self.low_stock_tree.heading("Stock Mínimo", text="Stock Mínimo")
         self.low_stock_tree.column("Stock Actual", width=120, anchor="center")
+        self.low_stock_tree.column("Stock Mínimo", width=120, anchor="center")
         self.low_stock_tree.grid(row=0, column=0, sticky="nsew")
 
         scrollbar = ctk.CTkScrollbar(tree_frame, command=self.low_stock_tree.yview)
@@ -70,20 +71,55 @@ class ReportsFrame(ctk.CTkFrame):
         self.generar_reporte_stock_bajo()
 
     def generar_reporte_stock_bajo(self):
-        umbral_str = self.stock_threshold_entry.get()
-        try:
-            umbral = int(umbral_str)
-        except ValueError:
-            messagebox.showerror("Valor Inválido", "El umbral de stock debe ser un número.", parent=self)
-            return
-
         for item in self.low_stock_tree.get_children():
             self.low_stock_tree.delete(item)
 
-        productos = database.obtener_productos_bajo_stock(umbral)
+        productos = database.obtener_productos_stock_bajo()
         for producto in productos:
-            self.low_stock_tree.insert("", "end", values=producto)
+            # Aseguramos el orden correcto de los valores para la tabla
+            valores = (
+                producto.get('codigo_barras', 'N/A'),
+                producto.get('nombre', 'N/A'),
+                producto.get('departamento', 'N/A'),
+                producto.get('stock', 0),
+                producto.get('stock_minimo', 0)
+            )
+            self.low_stock_tree.insert("", "end", values=valores)
 
+    def exportar_stock_bajo_pdf(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".pdf",
+                                                  filetypes=[("Archivos PDF", "*.pdf"), ("Todos los archivos", "*.*")])
+        if not filepath:
+            return
+
+        try:
+            productos = database.obtener_productos_stock_bajo()
+            
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            
+            pdf.cell(0, 10, "Reporte de Productos con Inventario Bajo", 0, 1, "C")
+            pdf.ln(10)
+
+            pdf.set_font("Arial", "B", 10)
+            headers = ["Código", "Nombre", "Departamento", "Stock Actual", "Stock Mínimo"]
+            col_widths = [40, 80, 30, 20, 20]
+            for i, header in enumerate(headers):
+                pdf.cell(col_widths[i], 10, header, 1, 0, "C")
+            pdf.ln()
+
+            pdf.set_font("Arial", "", 9)
+            for producto in productos:
+                linea = [str(producto.get(k, '')) for k in ['codigo_barras', 'nombre', 'departamento', 'stock', 'stock_minimo']]
+                for i, item in enumerate(linea):
+                    pdf.cell(col_widths[i], 10, item, 1, 0)
+                pdf.ln()
+
+            pdf.output(filepath)
+            messagebox.showinfo("Éxito", f"Reporte exportado correctamente a {filepath}", parent=self)
+        except Exception as e:
+            messagebox.showerror("Error de Exportación", f"No se pudo exportar el archivo PDF: {e}", parent=self)
     def setup_best_sellers_tab(self):
         tab = self.tab_view.tab("Más Vendidos")
         tab.grid_columnconfigure(0, weight=1)

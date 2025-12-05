@@ -22,6 +22,35 @@
             overflow-y: auto;
         }
 
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding: 15px 10px;
+        }
+
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed .sidebar-header .subtitle {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-header .logo-icon {
+            margin: 0 auto 0 auto;
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+
+        .sidebar.collapsed .sidebar-menu .text {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-menu .icon {
+            margin-right: 0;
+            justify-content: center;
+        }
+
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -98,6 +127,208 @@
             padding: 0;
             min-height: 100vh;
             background-color: #f8f9fa;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.collapsed {
+            margin-left: 60px;
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        body.dark-mode .main-content {
+            background-color: #121212;
+        }
+
+        body.dark-mode .page-header {
+            background: #1e1e1e;
+            color: #ffffff;
+        }
+
+        body.dark-mode .page-header .breadcrumb-item a {
+            color: #b3b3b3;
+        }
+
+        body.dark-mode .page-header .breadcrumb-item.active {
+            color: #ffffff;
+        }
+
+        body.dark-mode .card {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-color: #333333;
+        }
+
+        body.dark-mode .card-header {
+            background-color: #272727;
+            border-bottom-color: #333333;
+            color: #ffffff;
+        }
+
+        body.dark-mode .table {
+            color: #ffffff;
+        }
+
+        body.dark-mode .table th {
+            background-color: #272727;
+            border-color: #333333;
+            color: #ffffff;
+        }
+
+        body.dark-mode .table td {
+            border-color: #333333;
+            color: #ffffff;
+        }
+
+        body.dark-mode .table tbody tr {
+            background-color: #1e1e1e;
+        }
+
+        body.dark-mode .table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .text-muted {
+            color: #b3b3b3 !important;
+        }
+
+        body.dark-mode .btn-outline-primary {
+            color: #007bff;
+            border-color: #007bff;
+        }
+
+        body.dark-mode .btn-outline-primary:hover {
+            background-color: #007bff;
+            color: #ffffff;
+        }
+
+        body.dark-mode .btn-outline-danger {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        body.dark-mode .btn-outline-danger:hover {
+            background-color: #dc3545;
+            color: #ffffff;
+        }
+
+        body.dark-mode .breadcrumb {
+            background-color: transparent;
+        }
+
+        body.dark-mode .breadcrumb-item a {
+            color: #b3b3b3;
+        }
+
+        body.dark-mode .breadcrumb-item.active {
+            color: #ffffff;
+        }
+
+        /* Form elements in dark mode */
+        body.dark-mode .form-control {
+            background-color: #2d3748;
+            border-color: #4a5568;
+            color: #ffffff;
+        }
+
+        body.dark-mode .form-control:focus {
+            background-color: #2d3748;
+            border-color: #007bff;
+            color: #ffffff;
+        }
+
+        body.dark-mode .form-control::placeholder {
+            color: #a0aec0;
+        }
+
+        body.dark-mode .form-select {
+            background-color: #2d3748;
+            border-color: #4a5568;
+            color: #ffffff;
+        }
+
+        body.dark-mode .form-select option {
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+
+        body.dark-mode .modal {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        body.dark-mode .modal-content {
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+
+        body.dark-mode .modal-header {
+            border-bottom-color: #333333;
+        }
+
+        body.dark-mode .modal-footer {
+            border-top-color: #333333;
+        }
+
+        body.dark-mode .alert {
+            background-color: #2d3748;
+            border-color: #4a5568;
+            color: #ffffff;
+        }
+
+        body.dark-mode .badge {
+            background: #6b46c1;
+        }
+
+        /* Additional adjustments */
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3,
+        body.dark-mode h4, body.dark-mode h5, body.dark-mode h6 {
+            color: #ffffff;
+        }
+
+        body.dark-mode .navbar-text {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        body.dark-mode .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        /* Toggle button styles */
+        .sidebar-toggle {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dark-mode-toggle {
+            margin-left: 10px;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+
+        .dark-mode-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
 
         .content-wrapper {
@@ -215,6 +446,21 @@
         .sidebar::-webkit-scrollbar-thumb:hover {
             background: rgba(255,255,255,0.5);
         }
+
+        /* Sidebar footer */
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .sidebar.collapsed .sidebar-footer {
+            padding: 10px;
+        }
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
@@ -230,6 +476,9 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <button class="sidebar-toggle" id="sidebar-toggle" title="Colapsar barra lateral">
+                <i class="bi bi-chevron-left"></i>
+            </button>
             <div class="logo-icon">
                 <i class="bi bi-tools"></i>
             </div>
@@ -269,6 +518,44 @@
                 </a>
             </li>
             <li>
+                <a href="{{ url_for('sales_reports_page') }}" class="{% if request.endpoint == 'sales_reports_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-bar-chart"></i></div>
+                    <div class="text">Reportes</div>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('automations_page') }}" class="{% if request.endpoint == 'automations_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-robot"></i></div>
+                    <div class="text">Automatizaciones</div>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('cash_closing_page') }}" class="{% if request.endpoint == 'cash_closing_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-safe"></i></div>
+                    <div class="text">Cierre de Caja</div>
+                </a>
+            </li>
+            {% if session.role == 'Administrador' %}
+            <li>
+                <a href="{{ url_for('users_page') }}" class="{% if request.endpoint == 'users_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-people"></i></div>
+                    <div class="text">Usuarios</div>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('backups_page') }}" class="{% if request.endpoint == 'backups_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-cloud"></i></div>
+                    <div class="text">Backups</div>
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="{{ url_for('clients_page') }}" class="{% if request.endpoint == 'clients_page' %}active{% endif %}">
+                    <div class="icon"><i class="bi bi-people-fill"></i></div>
+                    <div class="text">Clientes</div>
+                </a>
+            </li>
+            <li>
                 <a href="{{ url_for('accounts_payable_page') }}" class="{% if request.endpoint == 'accounts_payable_page' %}active{% endif %}">
                     <div class="icon"><i class="bi bi-arrow-down-circle"></i></div>
                     <div class="text">Cuentas por Pagar</div>
@@ -280,22 +567,58 @@
                     <div class="text">Cuentas por Cobrar</div>
                 </a>
             </li>
+
+            <!-- Dark mode toggle below Accounts Receivable -->
+            <li class="mt-2">
+                <button class="sidebar-menu-item dark-mode-toggle w-100" id="dark-mode-toggle" title="Alternar modo oscuro">
+                    <div class="icon"><i class="bi bi-moon-fill"></i></div>
+                    <div class="text">Modo Oscuro</div>
+                </button>
+            </li>
         </ul>
     </nav>
 
     <!-- Main Content -->
     <div class="main-content">
         <!-- Header -->
-        <div class="page-header">
-            <h1>{% block page_title %}
+        <div class="page-header d-flex justify-content-between align-items-center">
+            <div>
+                <h1>{% block page_title %}{% endblock %}</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{% block breadcrumb %}{{ self.page_title() }}{% endblock %}</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="d-flex align-items-center">
+                <!-- Botón Flotante de Escáner -->
+                <a href="{{ url_for('scanner_page') }}" class="btn btn-primary rounded-circle me-3" style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Ir al Escáner">
+                    <i class="bi bi-upc-scan fs-5"></i>
+                </a>
 
-{% endblock %}</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">{% block breadcrumb %}{{ self.page_title() }}{% endblock %}</li>
-                </ol>
-            </nav>
+                <!-- Menú de Notificaciones -->
+                <div class="dropdown me-3">
+                    <button class="btn btn-outline-secondary position-relative" type="button" id="notificationsMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell"></i>
+                        <span id="notifications-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+                            0
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notificationsMenu" style="width: 350px;">
+                        <li class="px-3 py-2 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Notificaciones</h6>
+                            <a href="#" id="mark-all-read" class="text-decoration-none small">Marcar todo como leído</a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <div id="notifications-list" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Las notificaciones se insertarán aquí -->
+                        </div>
+                    </ul>
+                </div>
+                <span class="navbar-text me-3">Usuario: <strong>{{ session.username }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Salir</a>
+            </div>
         </div>
 
         <!-- Page Content -->
@@ -309,6 +632,15 @@
 
     <!-- Sidebar JavaScript -->
     <script>
+        // Helper functions
+        function saveSetting(key, value) {
+            localStorage.setItem(key, value);
+        }
+
+        function getSetting(key, defaultValue) {
+            return localStorage.getItem(key) || defaultValue;
+        }
+
         // Mobile menu toggle
         document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
             document.getElementById('sidebar').classList.toggle('show');
@@ -330,14 +662,195 @@
             });
         });
 
-        // Highlight active menu item
+        // Sidebar collapse/expand toggle
+        document.getElementById('sidebar-toggle').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const isCollapsed = sidebar.classList.contains('collapsed');
+
+            if (isCollapsed) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('collapsed');
+                this.innerHTML = '<i class="bi bi-chevron-left"></i>';
+                saveSetting('sidebarCollapsed', 'false');
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('collapsed');
+                this.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                saveSetting('sidebarCollapsed', 'true');
+            }
+        });
+
+        // Dark mode toggle
+        document.getElementById('dark-mode-toggle').addEventListener('click', function() {
+            const body = document.body;
+            const isDarkMode = body.classList.contains('dark-mode');
+
+            if (isDarkMode) {
+                body.classList.remove('dark-mode');
+                this.innerHTML = '<i class="bi bi-moon-fill"></i>';
+                saveSetting('darkMode', 'false');
+            } else {
+                body.classList.add('dark-mode');
+                this.innerHTML = '<i class="bi bi-sun-fill"></i>';
+                saveSetting('darkMode', 'true');
+            }
+        });
+
+        // --- SISTEMA DE NOTIFICACIONES ---
+        const notificationsBadge = document.getElementById('notifications-badge');
+        const notificationsList = document.getElementById('notifications-list');
+        const markAllReadBtn = document.getElementById('mark-all-read');
+
+        async function fetchNotifications() {
+            try {
+                const response = await fetch('/api/notifications');
+                const result = await response.json();
+
+                if (result.success && result.notifications) {
+                    updateNotificationsUI(result.notifications);
+                }
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            }
+        }
+
+        function updateNotificationsUI(notifications) {
+            if (!notificationsList || !notificationsBadge) return;
+
+            notificationsList.innerHTML = '';
+            const unreadCount = notifications.length; // Simulación, en un sistema real se filtraría por estado
+
+            if (unreadCount > 0) {
+                notificationsBadge.textContent = unreadCount;
+                notificationsBadge.style.display = 'block';
+            } else {
+                notificationsBadge.style.display = 'none';
+                notificationsList.innerHTML = '<li><a class="dropdown-item text-muted text-center" href="#">No hay notificaciones nuevas</a></li>';
+                return;
+            }
+
+            notifications.forEach(notif => {
+                const priorityIcons = {
+                    critical: 'bi-exclamation-octagon-fill text-danger',
+                    high: 'bi-exclamation-triangle-fill text-warning',
+                    medium: 'bi-info-circle-fill text-info',
+                    low: 'bi-bell-fill text-secondary'
+                };
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a class="dropdown-item d-flex align-items-start" href="#">
+                        <i class="bi ${priorityIcons[notif.priority] || 'bi-bell'} me-3 mt-1"></i>
+                        <div>
+                            <strong class="d-block">${notif.title}</strong>
+                            <small class="text-muted">${notif.message}</small>
+                        </div>
+                    </a>
+                `;
+                notificationsList.appendChild(li);
+            });
+        }
+
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                notificationsList.innerHTML = '<li><a class="dropdown-item text-muted text-center" href="#">No hay notificaciones nuevas</a></li>';
+                notificationsBadge.style.display = 'none';
+                // Aquí iría una llamada a la API para marcar como leídas en la BD
+            });
+        }
+
+        // Initialize settings on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Restore sidebar collapse state
+            const sidebarCollapsed = getSetting('sidebarCollapsed', 'false') === 'true';
+            if (sidebarCollapsed) {
+                document.getElementById('sidebar').classList.add('collapsed');
+                document.querySelector('.main-content').classList.add('collapsed');
+                document.getElementById('sidebar-toggle').innerHTML = '<i class="bi bi-chevron-right"></i>';
+            }
+
+            // Restore dark mode state
+            const darkMode = getSetting('darkMode', 'false') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('dark-mode-toggle').innerHTML = '<i class="bi bi-sun-fill"></i>';
+            }
+
+            // Highlight active menu item
             const currentPath = window.location.pathname;
             document.querySelectorAll('.sidebar-menu a').forEach(link => {
                 if (link.getAttribute('href') === currentPath) {
                     link.classList.add('active');
                 }
             });
+
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Cargar notificaciones al inicio
+            fetchNotifications();
+
+            // Intercept sidebar navigation to load content into .content-wrapper (SPA-like behavior)
+            function isSameOrigin(url) {
+                try { const u = new URL(url, window.location.origin); return u.origin === window.location.origin; } catch(e){ return false; }
+            }
+
+            document.querySelectorAll('.sidebar-menu a').forEach(link => {
+                link.addEventListener('click', function(evt){
+                    const href = link.getAttribute('href');
+                    if (!href || href.startsWith('#')) return;
+                    if (!isSameOrigin(href)) return; // external
+
+                    // Intercept only app routes (avoid API endpoints)
+                    if (href.startsWith('/')){
+                        evt.preventDefault();
+                        fetch(href, { credentials: 'same-origin' }).then(r => {
+                            if (!r.ok) { window.location.href = href; return null; }
+                            return r.text();
+                        }).then(html => {
+                            if (!html) return;
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const fragment = doc.querySelector('.content-wrapper') || doc.querySelector('.main-content') || doc.body;
+                            const target = document.querySelector('.content-wrapper');
+                            if (fragment && target){
+                                target.innerHTML = fragment.innerHTML;
+                                // Update active class
+                                document.querySelectorAll('.sidebar-menu a').forEach(x=>x.classList.remove('active'));
+                                link.classList.add('active');
+                                // Update history
+                                window.history.pushState({url: href}, '', href);
+                            } else {
+                                window.location.href = href;
+                            }
+                        }).catch(err=>{ console.error('Navigation error', err); window.location.href = href; });
+                    }
+                });
+            });
+
+            // Handle back/forward
+            window.addEventListener('popstate', function(ev){
+                const url = (ev.state && ev.state.url) || window.location.pathname;
+                fetch(url, { credentials: 'same-origin' }).then(r => r.text()).then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const fragment = doc.querySelector('.content-wrapper') || doc.querySelector('.main-content') || doc.body;
+                    const target = document.querySelector('.content-wrapper');
+                    if (fragment && target) target.innerHTML = fragment.innerHTML;
+                }).catch(()=>{ window.location.href = url; });
+            });
+        });
+
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                document.getElementById('sidebar-overlay').classList.remove('show');
+            }
         });
     </script>
 

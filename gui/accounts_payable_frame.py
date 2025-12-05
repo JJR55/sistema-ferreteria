@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 import database.database as database
-from datetime import date
+from datetime import date, datetime, timedelta
 from utils.currency import get_usd_to_dop_rate
 import threading
 
@@ -135,6 +135,11 @@ class AccountsPayableFrame(ctk.CTkFrame):
         self.payable_tree.column("Monto (DOP)", anchor="e")
         self.payable_tree.column("Moneda", width=60, anchor="center")
         self.payable_tree.grid(row=0, column=0, sticky="nsew")
+
+        # Configurar tags para resaltar filas
+        self.payable_tree.tag_configure('overdue', background='#8B0000') # Rojo oscuro para vencidas
+        self.payable_tree.tag_configure('due_soon', background='#FF8C00') # Naranja para prontas a vencer
+
         self.cargar_cuentas_por_pagar()
 
     def cargar_proveedores(self):
@@ -142,17 +147,25 @@ class AccountsPayableFrame(ctk.CTkFrame):
             self.suppliers_tree.delete(item)
         
         proveedores = database.obtener_proveedores()
-        self.proveedores_map = {p[1]: p[0] for p in proveedores} # Nombre -> ID
+        self.proveedores_map = {p['nombre']: p['_id'] for p in proveedores} # Nombre -> ID
         
         if proveedores:
-            self.invoice_supplier_menu.configure(values=list(self.proveedores_map.keys()))
-            self.invoice_supplier_menu.set(list(self.proveedores_map.keys())[0])
+            nombres_proveedores = list(self.proveedores_map.keys())
+            self.invoice_supplier_menu.configure(values=nombres_proveedores)
+            self.invoice_supplier_menu.set(nombres_proveedores[0])
         else:
             self.invoice_supplier_menu.configure(values=["No hay proveedores"])
             self.invoice_supplier_menu.set("No hay proveedores")
 
         for p in proveedores:
-            self.suppliers_tree.insert("", "end", values=p)
+            # Corregido: Insertar valores en el orden correcto
+            valores = (
+                p.get('_id', ''),
+                p.get('nombre', ''),
+                p.get('rnc', ''),
+                p.get('telefono', '')
+            )
+            self.suppliers_tree.insert("", "end", values=valores)
 
     def agregar_proveedor(self):
         nombre = self.supplier_name_entry.get()
@@ -176,16 +189,44 @@ class AccountsPayableFrame(ctk.CTkFrame):
         cuentas = database.obtener_cuentas_por_pagar()
         
         for c in cuentas:
-            monto = c[5]
-            moneda = c[6]
+            # Corregido: Acceder a los datos por clave de diccionario
+            monto = c.get('monto', 0)
+            moneda = c.get('moneda', 'DOP')
             monto_dop_str = ""
             if moneda == 'USD' and self.exchange_rate:
                 monto_dop = monto * self.exchange_rate
                 monto_dop_str = f"RD$ {monto_dop:,.2f}"
             elif moneda == 'DOP':
                 monto_dop_str = f"RD$ {monto:,.2f}"
+            
+            # Lógica para resaltar facturas
+            tag = ''
+            fecha_vencimiento_str = c.get('fecha_vencimiento', '')
+            if fecha_vencimiento_str:
+                try:
+                    # Usamos datetime.strptime para manejar el formato 'YYYY-MM-DD'
+                    fecha_vencimiento = datetime.strptime(fecha_vencimiento_str, '%Y-%m-%d').date()
+                    hoy = date.today()
+                    diferencia = (fecha_vencimiento - hoy).days
+                    if diferencia < 0:
+                        tag = 'overdue'
+                    elif 0 <= diferencia <= 7:
+                        tag = 'due_soon'
+                except (ValueError, TypeError):
+                    pass # Si la fecha es inválida, no se aplica tag
 
-            self.payable_tree.insert("", "end", values=(*c, monto_dop_str))
+            # Corregido: Insertar valores en el orden correcto
+            valores = (
+                c.get('_id', ''),
+                c.get('proveedor_nombre', ''),
+                c.get('numero_factura', ''),
+                c.get('fecha_emision', ''),
+                c.get('fecha_vencimiento', ''),
+                f"{monto:,.2f}",
+                moneda,
+                monto_dop_str
+            )
+            self.payable_tree.insert("", "end", values=valores, tags=(tag,))
 
     def agregar_factura(self):
         proveedor_nombre = self.invoice_supplier_menu.get()
@@ -220,12 +261,12 @@ class AccountsPayableFrame(ctk.CTkFrame):
             return
 
         item_data = self.payable_tree.item(selected_item[0])['values']
-        factura_id = item_data[0]
-        proveedor = item_data[1]
-        num_factura = item_data[2]
+        factura_id = str(item_data[0]) # Asegurarse de que es un string
+        proveedor = str(item_data[1])
+        num_factura = str(item_data[2])
 
         if messagebox.askyesno("Confirmar Pago", f"¿Está seguro de que desea marcar la factura #{num_factura} del proveedor '{proveedor}' como pagada?", parent=self):
-            database.marcar_factura_como_pagada(factura_id)
+            database.marcar_factura_como_pagada(str(factura_id))
             self.cargar_cuentas_por_pagar() # Recargar la lista
             messagebox.showinfo("Éxito", "La factura ha sido marcada como pagada y eliminada de la lista de pendientes.", parent=self)
 

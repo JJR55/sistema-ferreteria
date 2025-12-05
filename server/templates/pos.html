@@ -15,8 +15,14 @@
                 <h3 class="mb-0"><i class="bi bi-cart-check"></i> Punto de Venta</h3>
                 <small class="text-muted">Sesión activa - Venta en progreso</small>
             </div>
-            <div class="pos-status">
-                <span class="badge bg-success"><i class="bi bi-circle-fill text-success"></i> Sistema Operativo</span>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="frequent-products-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-star-fill"></i> Favoritos
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="frequent-products-dropdown" id="frequent-products-list">
+                    <!-- Los productos frecuentes se cargarán aquí -->
+                    <li><a class="dropdown-item text-muted" href="#">Cargando...</a></li>
+                </ul>
             </div>
         </div>
     </div>
@@ -24,32 +30,63 @@
     <div class="row mt-4">
         <!-- PANEL IZQUIERDO: PRODUCTOS -->
         <div class="col-lg-7">
-            <!-- BÚSQUEDA RÁPIDA -->
-            <div class="search-section mb-4">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="search-card barcode-card">
-                            <div class="search-icon">
-                                <i class="bi bi-upc-scan"></i>
+            <!-- ESCÁNER MÓVIL FLOTANTE -->
+            <div id="floating-scanner-container" class="floating-scanner-container" style="display: none;">
+                <div class="floating-scanner-panel">
+                    <div class="floating-scanner-header">
+                        <h6 class="mb-0"><i class="bi bi-camera"></i> Escáner Inalámbrico</h6>
+                        <button id="close-floating-scanner" class="btn-close btn-sm" aria-label="Close"></button>
+                    </div>
+                    <div class="floating-scanner-body">
+                        <!-- Escáner embebido -->
+                        <div class="scanner-mini-view">
+                            <div id="floating-scanner-target" class="floating-scanner-target">
+                                <!-- Aquí se incrustará el escáner móvil -->
                             </div>
-                            <div class="search-input">
-                                <label class="search-label">Código de Barras</label>
-                                <input type="text" id="barcode-input" class="form-control barcode-input-auto" placeholder="Código..." maxlength="20">
-                                <small class="text-muted">Escanee automáticamente</small>
+                        </div>
+                        <div class="floating-scanner-controls mt-3">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select id="floating-scanner-mode" class="form-select form-select-sm">
+                                        <option value="auto">Automático</option>
+                                        <option value="mobile">Móvil + Servidor</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <button id="open-full-scanner" class="btn btn-primary btn-sm w-100">
+                                        <i class="bi bi-arrow-diagonal"></i> Pantalla Completa
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div class="col-md-6">
+            <!-- BOTÓN FLOTANTE PARA ACTIVAR ESCÁNER -->
+            <button id="fab-scanner" class="fab-scanner" title="Escáner Móvil">
+                <i class="bi bi-upc-scan"></i>
+            </button>
+
+            <!-- BÚSQUEDA RÁPIDA -->
+            <div class="search-section mb-4">
+                <div class="row g-3">
+                    <div class="col-md-12">
                         <div class="search-card">
                             <div class="search-icon">
                                 <i class="bi bi-search"></i>
                             </div>
-                            <div class="search-input">
-                                <label class="search-label">Buscar Producto</label>
+                            <div class="search-input flex-grow-1">
+                                <label class="search-label">Buscar o Escanear Producto</label>
                                 <div class="input-group">
-                                    <input type="text" id="product-search" class="form-control form-control-lg" placeholder="Nombre del producto...">
-                                    <button class="btn btn-primary" type="button" id="add-product-btn">
+                                    <input type="text" id="product-search" class="form-control" placeholder="Nombre del producto...">
+                                    <button class="btn btn-outline-secondary" type="button" id="clear-search-btn" title="Limpiar búsqueda" style="display: none;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#scannerModal" title="Abrir escáner de cámara">
+                                        <i class="bi bi-upc-scan"></i>
+                                    </button>
+                                    <button class="btn btn-primary" type="button" id="add-product-btn" title="Añadir producto buscado">
                                         <i class="bi bi-plus-circle"></i>
                                     </button>
                                 </div>
@@ -127,6 +164,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- PANEL DERECHO: RESUMEN Y ACCIONES -->
@@ -210,20 +248,139 @@
                         <button class="secondary-action hold" id="hold-sale-btn">
                             <i class="bi bi-pause-circle"></i> Pausar
                         </button>
-                    </div>
-                </div>
-
-                <!-- SECCIÓN DE DEVOLUCIONES EN PANTALLAS GRANDES -->
-                <div class="returns-section d-none d-lg-block">
-                    <div class="returns-header">
-                        <h5><i class="bi bi-arrow-return-left"></i> Devoluciones</h5>
-                    </div>
-                    <div class="returns-content">
-                        <p class="mb-2">Para devolver productos, selecciónelos en la lista y haga clic en "Devolver".</p>
-                        <button class="btn btn-sm btn-outline-warning w-100" id="process-return-btn" disabled>
-                            <i class="bi bi-arrow-return-left"></i> Procesar Devolución
+                        <button class="secondary-action info" id="view-held-sales-btn">
+                            <i class="bi bi-list-task"></i> Ver Pausadas
+                            <span id="held-sales-count" class="badge bg-danger ms-1" style="display: none;">0</span>
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA APLICAR DESCUENTO -->
+<div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="discountModalLabel"><i class="bi bi-percent"></i> Aplicar Descuento a la Venta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="discount-type" class="form-label">Tipo de Descuento</label>
+                    <select class="form-select" id="discount-type-modal">
+                        <option value="percentage">Porcentaje (%)</option>
+                        <option value="fixed">Monto Fijo (RD$)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="discount-value" class="form-label">Valor del Descuento</label>
+                    <input type="number" class="form-control" id="discount-value-modal" step="0.01" min="0" value="0">
+                </div>
+                <div class="alert alert-info mt-3">
+                    Subtotal Bruto: <strong id="discount-subtotal-display">RD$ 0.00</strong><br>
+                    Descuento Aplicado: <strong id="discount-applied-display">RD$ 0.00</strong><br>
+                    Nuevo Subtotal: <strong id="discount-new-subtotal-display">RD$ 0.00</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="confirm-discount-btn">Aplicar Descuento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA FINALIZAR VENTA (PAGO) -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="paymentModalLabel"><i class="bi bi-cash-coin"></i> Finalizar Venta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-3">Resumen de la Venta</h6>
+                        <div class="border p-3 mb-3 bg-light rounded">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span class="fw-bold" id="payment-subtotal-display">RD$ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Descuento:</span>
+                                <span class="fw-bold text-success" id="payment-discount-display">- RD$ 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>ITBIS (18%):</span>
+                                <span class="fw-bold" id="payment-itbis-display">RD$ 0.00</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between fs-4 fw-bold">
+                                <span>Total a Pagar:</span>
+                                <span class="text-primary" id="payment-total-display">RD$ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 border-start">
+                        <h6 class="mb-3">Registrar Pagos</h6>
+                        <div class="d-flex justify-content-between fs-5 fw-bold mb-3">
+                            <span>Restante:</span>
+                            <span class="text-danger" id="payment-remaining-display">RD$ 0.00</span>
+                        </div>
+                        <div class="input-group mb-3">
+                            <select class="form-select" id="split-payment-method" style="flex-grow: 2;">
+                                <option value="Efectivo">💵 Efectivo</option>
+                                <option value="Tarjeta">💳 Tarjeta</option>
+                                <option value="Transferencia">🏦 Transferencia</option>
+                                <option value="Crédito">📋 Crédito</option>
+                            </select>
+                            <span class="input-group-text">RD$</span>
+                            <input type="number" class="form-control" id="split-payment-amount" placeholder="Monto">
+                            <button class="btn btn-primary" id="add-split-payment-btn">
+                                <i class="bi bi-plus-lg"></i> Agregar Pago
+                            </button>
+                        </div>
+                        <hr>
+                        <h6>Pagos Realizados</h6>
+                        <div id="split-payments-list" class="list-group mb-3" style="max-height: 150px; overflow-y: auto;">
+                            <!-- Pagos divididos se insertan aquí -->
+                        </div>
+                        <div class="d-flex justify-content-between fs-5 fw-bold">
+                            <span>Cambio:</span>
+                            <span class="text-success" id="payment-change-display">RD$ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirm-payment-btn" disabled>
+                    <i class="bi bi-check-circle"></i> Confirmar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA VER VENTAS EN ESPERA -->
+<div class="modal fade" id="heldSalesModal" tabindex="-1" aria-labelledby="heldSalesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="heldSalesModalLabel"><i class="bi bi-pause-circle-fill"></i> Ventas en Espera</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="hold-list-container">
+                    <!-- La lista de ventas pausadas se insertará aquí -->
+                </div>
+                <div id="no-held-sales-message" class="text-center p-5" style="display: none;">
+                    <i class="bi bi-emoji-smile text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">No hay ventas en espera</h5>
                 </div>
             </div>
         </div>
@@ -294,15 +451,124 @@
     </div>
 </div>
 
+<!-- MODAL PARA ACTUALIZAR CLIENTE EN VENTA DE CRÉDITO (DESPUÉS DE FINALIZAR) -->
+<div class="modal fade" id="updateCreditClientModal" tabindex="-1" aria-labelledby="updateCreditClientLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="updateCreditClientLabel"><i class="bi bi-person-check"></i> Asociar Cliente a Venta a Crédito</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Venta pendiente de cliente:</strong> Esta venta fue registrada a crédito sin cliente específico. Puedes asociarla a un cliente ahora.
+                </div>
+                <div class="input-group mb-3">
+                    <input type="text" id="update-client-search" class="form-control" placeholder="Buscar cliente por nombre o RNC...">
+                    <button class="btn btn-outline-secondary" type="button" id="clear-update-client-btn">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
+                </div>
+                <div id="update-client-results" class="search-results"></div>
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-lightbulb"></i> Si no encuentras el cliente, puedes crearlo desde la sección de Clientes y volver después para asociarlo.
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar (Hacerlo después)</button>
+                <button type="button" class="btn btn-info" id="confirm-update-credit-client-btn" disabled>
+                    <i class="bi bi-check-circle"></i> Asociar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal del Escáner -->
+<div class="modal fade" id="scannerModal" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scannerModalLabel"><i class="bi bi-upc-scan"></i> Escáner de Código de Barras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted text-center">Apunte la cámara al código de barras del producto.</p>
+                <div id="interactive" class="viewport" style="position: relative; min-height: 200px;">
+                    <video autoplay="true" preload="auto" src="" style="width: 100%; height: auto;"></video>
+                    <canvas class="drawingBuffer" style="position: absolute; top: 0; left: 0;"></canvas>
+                </div>
+                <div id="scanner-status" class="mt-2 text-center"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Búsqueda de Cliente (Reutilizado) -->
+<div class="modal fade" id="clientSearchModal" tabindex="-1" aria-labelledby="clientSearchModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="clientSearchModalLabel">Buscar Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="client-search-input" class="form-control" placeholder="Escriba nombre o RNC/Cédula...">
+        <div id="client-search-results" class="list-group mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="toast-element" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+        <div class="toast-body" id="toast-message">
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Incluir scanner para poder usarlo con el móvil -->
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+
 <script>
 // --- Estado de la Aplicación ---
 let saleItems = {};
-let selectedClient = null;
-let discount = 0.0;
+let selectedClient = null; // Inicialmente null, se asigna al seleccionar un cliente
+let discount = 0.0; // Descuento inicial
 const ITBIS_RATE = 0.18;
+
+// --- Exponer funciones para integración con scanner ---
+window.scannerAddToCart = addProductToSale;
+window.posCart = {
+    addItem: addProductToSale
+};
+window.isPosMode = true;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Configurar eventos iniciales del POS
+    setupEventListeners();
+
+    // Inicializar referencias a elementos del DOM del POS
+    const clientDisplayElement = document.getElementById('selected-client-display');
+    // Cargar productos frecuentes
+    let splitPayments = [];
+    renderFrequentProducts();
+
+    if (clientDisplayElement) {
+        clientDisplayDiv = clientDisplayElement;
+    }
+});
 
 // --- Selectores de Elementos del DOM ---
 const barcodeInput = document.getElementById('barcode-input');
@@ -331,22 +597,150 @@ const selectAllBtn = document.getElementById('select-all-btn');
 const selectAllCheckbox = document.getElementById('select-all-checkbox');
 const addProductBtn = document.getElementById('add-product-btn');
 
-let clientDisplayDiv; // Define después de que el DOM esté listo
+const heldSalesModal = new bootstrap.Modal(document.getElementById('heldSalesModal'));
+const discountModal = new bootstrap.Modal(document.getElementById('discountModal'));
+const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
 
-// --- Inicialización ---
+let clientDisplayDiv; // Define después de que el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar referencias a elementos del DOM
-    const clientDisplayElement = document.getElementById('selected-client-display');
-    if (clientDisplayElement) {
-        clientDisplayDiv = clientDisplayElement;
+    // Inicializar elementos del FAB y Scanner flotante
+    const fabScanner = document.getElementById('fab-scanner');
+    const floatingScannerContainer = document.getElementById('floating-scanner-container');
+    const closeFloatingScanner = document.getElementById('close-floating-scanner');
+    const openFullScanner = document.getElementById('open-full-scanner');
+    const floatingScannerMode = document.getElementById('floating-scanner-mode');
+
+    // Crear elementos dinámicos del escáner flotante
+    initializeFloatingScanner();
+
+    function initializeFloatingScanner() {
+        const scannerTarget = document.getElementById('floating-scanner-target');
+        if (!scannerTarget) {
+            console.error('Floating scanner target not found');
+            return;
+        }
+
+        // Crear elementos del escáner flotante
+        scannerTarget.innerHTML = `
+            <div id="floating-scanner-auto" style="display: none; width: 100%; height: 100%; position: relative;">
+                <!-- Aquí va el escáner automático flotante -->
+                <div id="floating-interactive" style="width: 100%; height: 100%; position: relative;"></div>
+            </div>
+            <div id="floating-scanner-mobile" style="display: none; width: 100%; height: 100%; position: relative;">
+                <video id="floating-mobile-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <canvas id="floating-mobile-canvas" style="display: none;"></canvas>
+                <button id="floating-capture-frame-btn" class="btn btn-success btn-sm" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);">
+                    <i class="bi bi-camera"></i> Capturar
+                </button>
+            </div>
+        `;
+
+        // Event listeners para el FAB
+        if (fabScanner) {
+            fabScanner.addEventListener('click', showFloatingScanner);
+        }
+
+        // Event listeners para controles del escáner flotante
+        if (closeFloatingScanner) {
+            closeFloatingScanner.addEventListener('click', hideFloatingScanner);
+        }
+
+        if (floatingScannerContainer) {
+            floatingScannerContainer.addEventListener('click', function(e) {
+                if (e.target === floatingScannerContainer) {
+                    hideFloatingScanner();
+                }
+            });
+        }
+
+        if (openFullScanner) {
+            openFullScanner.addEventListener('click', function() {
+                window.location.href = '/scanner';
+            });
+        }
+
+        if (floatingScannerMode) {
+            floatingScannerMode.addEventListener('change', function(e) {
+                changeFloatingScannerMode(e.target.value);
+            });
+        }
     }
 
-    // Configurar eventos iniciales
-    setupEventListeners();
+    function showFloatingScanner() {
+        if (floatingScannerContainer) {
+            floatingScannerContainer.style.display = 'flex';
+            changeFloatingScannerMode('auto'); // Iniciar en modo automático
+        }
+    }
 
-    // Enfoque inicial
-    if (productSearchInput) {
-        productSearchInput.focus();
+    function hideFloatingScanner() {
+        if (floatingScannerContainer) {
+            floatingScannerContainer.style.display = 'none';
+
+            // Detener cualquier escáner activo flotante
+            stopFloatingScanner();
+        }
+    }
+
+    function changeFloatingScannerMode(mode) {
+        const autoDiv = document.getElementById('floating-scanner-auto');
+        const mobileDiv = document.getElementById('floating-scanner-mobile');
+        const scannerTarget = document.getElementById('floating-scanner-target');
+
+        if (!autoDiv || !mobileDiv || !scannerTarget) return;
+
+        // Detener primero cualquier scanner activo
+        stopFloatingScanner();
+
+        // Cambiar modo
+        if (mode === 'auto') {
+            autoDiv.style.display = 'block';
+            mobileDiv.style.display = 'none';
+            scannerTarget.classList.add('auto-mode');
+            scannerTarget.classList.remove('mobile-mode');
+
+            // Iniciar escáner automático flotante
+            setTimeout(() => initFloatingAutoScanner(), 100);
+        } else if (mode === 'mobile') {
+            autoDiv.style.display = 'none';
+            mobileDiv.style.display = 'block';
+            scannerTarget.classList.remove('auto-mode');
+            scannerTarget.classList.add('mobile-mode');
+
+            // Iniciar escáner móvil flotante
+            setTimeout(() => initFloatingMobileScanner(), 100);
+        }
+    }
+
+    function initFloatingAutoScanner() {
+        // Usar las funciones principales del scanner.js
+        if (window.setScannerMode && window.isPosMode) {
+            window.setScannerMode('auto', true);
+        }
+    }
+
+    function initFloatingMobileScanner() {
+        // Usar las funciones móviles del scanner.js
+        if (window.setScannerMode && window.isPosMode) {
+            window.setScannerMode('mobile', true);
+        }
+    }
+
+    function stopFloatingScanner() {
+        // Limpiar estados del scanner
+        if (window.stopScanner) {
+            window.stopScanner();
+        }
+        if (window.stopMobileScanner) {
+            window.stopMobileScanner();
+        }
+    }
+
+    // Update the modal event listeners for the POS scanner
+    const scannerModal = document.getElementById('scannerModal');
+    if (scannerModal) {
+        scannerModal.addEventListener('shown.bs.modal', () => window.posScanner.init());
+        scannerModal.addEventListener('hide.bs.modal', () => window.posScanner.stop());
     }
 });
 
@@ -481,6 +875,22 @@ function setupEventListeners() {
             }
             await performProductSearch(term);
         });
+
+        // Mostrar/ocultar botón de limpiar búsqueda
+        productSearchInput.addEventListener('input', () => {
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (productSearchInput.value.length > 0) {
+                clearBtn.style.display = 'block';
+            } else {
+                clearBtn.style.display = 'none';
+                if (productResultsDiv) productResultsDiv.innerHTML = '';
+            }
+        });
+
+        document.getElementById('clear-search-btn').addEventListener('click', () => {
+            productSearchInput.value = '';
+            productSearchInput.dispatchEvent(new Event('input')); // Disparar evento para ocultar el botón y limpiar resultados
+        });
     }
 
     // Botón para forzar búsqueda manual
@@ -547,6 +957,149 @@ function setupEventListeners() {
         });
     }
 
+// --- LÓGICA DE NUEVOS MODALES ---
+
+function showDiscountModal() {
+    const subtotalBruto = Object.values(saleItems).reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+    if (subtotalBruto === 0) {
+        alert('No hay productos en la venta para aplicar un descuento.');
+        return;
+    }
+
+    document.getElementById('discount-subtotal-display').textContent = formatCurrency(subtotalBruto);
+    document.getElementById('discount-value-modal').value = 0;
+    document.getElementById('discount-type-modal').value = 'percentage';
+    
+    const updatePreview = () => {
+        const type = document.getElementById('discount-type-modal').value;
+        const value = parseFloat(document.getElementById('discount-value-modal').value) || 0;
+        let calculatedDiscount = 0;
+
+        if (type === 'percentage') {
+            calculatedDiscount = subtotalBruto * (value / 100);
+        } else { // fixed
+            calculatedDiscount = value;
+        }
+        calculatedDiscount = Math.min(calculatedDiscount, subtotalBruto); // No puede ser mayor al subtotal
+
+        document.getElementById('discount-applied-display').textContent = formatCurrency(calculatedDiscount);
+        document.getElementById('discount-new-subtotal-display').textContent = formatCurrency(subtotalBruto - calculatedDiscount);
+    };
+
+
+    document.getElementById('discount-type-modal').oninput = updatePreview;
+    document.getElementById('discount-value-modal').oninput = updatePreview;
+    
+    updatePreview(); // Llamada inicial
+    discountModal.show();
+}
+
+document.getElementById('confirm-discount-btn').addEventListener('click', () => {
+    const subtotalBruto = Object.values(saleItems).reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+    const type = document.getElementById('discount-type-modal').value;
+    const value = parseFloat(document.getElementById('discount-value-modal').value) || 0;
+
+    if (type === 'percentage') {
+        discount = subtotalBruto * (value / 100);
+    } else {
+        discount = value;
+    }
+
+    if (discount > subtotalBruto) {
+        alert('El descuento no puede ser mayor que el subtotal.');
+        discount = 0;
+        return;
+    }
+
+    discountModal.hide();
+    updateUI();
+});
+
+function renderSplitPayments() {
+    const list = document.getElementById('split-payments-list');
+    const totalDue = parseFloat(document.getElementById('payment-total-display').textContent.replace(/[^\d.-]/g, ''));
+    list.innerHTML = '';
+    let totalPaid = 0;
+
+    splitPayments.forEach((p, index) => {
+        totalPaid += p.amount;
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.innerHTML = `
+            <span><i class="bi bi-cash-coin"></i> ${p.method}</span>
+            <span class="fw-bold">${formatCurrency(p.amount)}</span>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeSplitPayment(${index})"><i class="bi bi-trash"></i></button>
+        `;
+        list.appendChild(item);
+    });
+
+    const remaining = totalDue - totalPaid;
+    const change = totalPaid - totalDue;
+
+    document.getElementById('payment-remaining-display').textContent = formatCurrency(Math.max(0, remaining));
+    document.getElementById('payment-change-display').textContent = formatCurrency(Math.max(0, change));
+    document.getElementById('confirm-payment-btn').disabled = remaining > 0;
+}
+
+function removeSplitPayment(index) {
+    splitPayments.splice(index, 1);
+    renderSplitPayments();
+}
+
+document.getElementById('add-split-payment-btn').addEventListener('click', () => {
+    const method = document.getElementById('split-payment-method').value;
+    const amountInput = document.getElementById('split-payment-amount');
+    const amount = parseFloat(amountInput.value);
+
+    if (isNaN(amount) || amount <= 0) {
+        alert('Por favor, ingrese un monto válido.');
+        return;
+    }
+
+    splitPayments.push({ method, amount });
+    renderSplitPayments();
+    amountInput.value = '';
+});
+
+function showPaymentModal() {
+    if (Object.keys(saleItems).length === 0) {
+        alert('No hay productos para finalizar la venta.');
+        return;
+    }
+
+    // Resetear pagos divididos
+    splitPayments = [];
+
+    const subtotalBruto = Object.values(saleItems).reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+    const subtotalDescontado = subtotalBruto - discount;
+
+    // Usar el subtotal descontado como base para el ITBIS
+    const itbisIncluido = subtotalDescontado - (subtotalDescontado / (1 + ITBIS_RATE));
+    const baseImponible = subtotalDescontado - itbisIncluido;
+
+    document.getElementById('payment-subtotal-display').textContent = formatCurrency(subtotalBruto);
+    document.getElementById('payment-discount-display').textContent = `- ${formatCurrency(discount)}`;
+    document.getElementById('payment-itbis-display').textContent = formatCurrency(itbisIncluido);
+    document.getElementById('payment-total-display').textContent = formatCurrency(subtotalDescontado);
+    
+    // Sugerir el monto restante en el campo de pago dividido
+    document.getElementById('split-payment-amount').value = subtotalDescontado.toFixed(2);
+
+    renderSplitPayments();
+    paymentModal.show();
+}
+
+document.getElementById('confirm-payment-btn').addEventListener('click', () => {
+    let tempClientName = null;
+    const hasCreditPayment = splitPayments.some(p => p.method === 'Crédito');
+    // Si hay pago a crédito pero no hay cliente seleccionado, ofrecer capturar nombre (opcional ahora)
+    if (hasCreditPayment && !selectedClient) {
+        const response = prompt('Venta a crédito sin cliente específico.\n\n(Opcional) Ingrese un nombre o referencia. Podrá completar el cliente después:');
+        tempClientName = response && response.trim() !== '' ? response.trim() : null;
+    }
+    finalizeSale(splitPayments, tempClientName);
+});
+
     // Eventos de botones de acción
     if (modifyQtyBtn) {
         modifyQtyBtn.addEventListener('click', () => {
@@ -602,40 +1155,7 @@ function setupEventListeners() {
     }
 
     if (discountBtn) {
-        discountBtn.addEventListener('click', () => {
-            const subtotalBruto = Object.values(saleItems).reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
-            if (subtotalBruto === 0) {
-                alert('No hay productos en la venta.');
-                return;
-            }
-
-            const discountStr = prompt("Ingrese el descuento (% o monto fijo).\nEjemplos: '10%' o '500'");
-            if (discountStr) {
-                try {
-                    if (discountStr.includes('%')) {
-                        const percentage = parseFloat(discountStr.replace('%', '').trim());
-                        if (percentage > 0 && percentage <= 100) {
-                            discount = subtotalBruto * (percentage / 100);
-                        } else {
-                            throw new Error();
-                        }
-                    } else {
-                        const amount = parseFloat(discountStr.trim());
-                        if (amount > 0 && amount <= subtotalBruto) {
-                            discount = amount;
-                        } else {
-                            throw new Error();
-                        }
-                    }
-                } catch {
-                    alert('Valor de descuento inválido.');
-                    discount = 0.0;
-                }
-            } else {
-                discount = 0.0;
-            }
-            updateUI();
-        });
+        discountBtn.addEventListener('click', showDiscountModal);
     }
 
     if (cancelSaleBtn) {
@@ -647,7 +1167,29 @@ function setupEventListeners() {
     }
 
     if (finalizeSaleBtn) {
-        finalizeSaleBtn.addEventListener('click', finalizeSale);
+        finalizeSaleBtn.addEventListener('click', () => {
+            if (Object.keys(saleItems).length === 0) {
+                alert('No hay productos para finalizar la venta.');
+                return;
+            }
+            const paymentMethod = paymentMethodSelect.value;
+            // Si es crédito sin cliente, preguntar por nombre y procesar directamente
+            if (paymentMethod === 'Crédito' && !selectedClient) {
+                const clientName = prompt('Venta a crédito sin cliente específico.\n\n(Opcional) Ingrese un nombre o referencia:');
+                // Procesar directamente con pago 100% a crédito
+                const payments = [{ method: 'Crédito', amount: 0 }]; // El monto se calculará en finalizeSale
+                finalizeSale(payments, clientName);
+            } else {
+                // Para otros casos, mostrar modal de pago (permite pago dividido)
+                showPaymentModal();
+            }
+        });
+    }
+
+    // Botón para ver ventas pausadas
+    const viewHeldSalesBtn = document.getElementById('view-held-sales-btn');
+    if (viewHeldSalesBtn) {
+        viewHeldSalesBtn.addEventListener('click', () => heldSalesModal.show());
     }
 
     // --- Funcionalidad de Pausar Venta ---
@@ -678,10 +1220,13 @@ function setupEventListeners() {
             alert(`Venta pausada con ID: ${saleId}\n\nPodrás recuperar esta venta más tarde.`);
             clearSale();
 
-            // Actualizar lista de ventas pausadas si existe
+            // Actualizar contador y lista de ventas pausadas
             updateHoldList();
         });
     }
+
+    // REMOVIDO: Ya no resaltar cliente para Crédito - ahora es opcional
+    // Las ventas a crédito pueden procesarse sin cliente seleccionado
 
     // Atajos de teclado
     document.addEventListener('keydown', (e) => {
@@ -694,6 +1239,9 @@ function setupEventListeners() {
             if (cancelSaleBtn) cancelSaleBtn.click();
         }
     });
+
+    // Actualizar la lista de ventas pausadas al cargar la página
+    updateHoldList();
 }
 
 // --- Funciones Principales ---
@@ -808,32 +1356,18 @@ function clearSale() {
     updateUI();
 }
 
-async function finalizeSale() {
-    if (Object.keys(saleItems).length === 0) {
-        alert('No hay productos en la venta.');
-        return;
+// Variable global para guardar el ID de la venta actual (si es a crédito sin cliente)
+let currentCreditSaleId = null;
+
+async function finalizeSale(payments, tempClientName = null) {
+    const confirmBtn = document.getElementById('confirm-payment-btn');
+    const finalizeBtn = document.getElementById('finalize-sale-btn');
+
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
     }
-
-    const paymentMethod = paymentMethodSelect ? paymentMethodSelect.value : 'Efectivo';
-    if (paymentMethod === 'Crédito' && !selectedClient) {
-        alert('Para ventas a crédito, debe seleccionar un cliente.');
-        return;
-    }
-
-    const total = Object.values(saleItems).reduce((sum, item) => sum + (item.cantidad * item.precio), 0) - discount;
-
-    let amountReceived = 0;
-    let change = 0;
-
-    if (paymentMethod === 'Efectivo') {
-        amountReceived = parseFloat(prompt(`Total a pagar: ${formatCurrency(total)}\n\nIngrese el monto recibido:`));
-        if (isNaN(amountReceived) || amountReceived < total) {
-            alert('Monto recibido inválido o insuficiente.');
-            return;
-        }
-        change = amountReceived - total;
-        alert(`Venta finalizada.\nDevuelta: ${formatCurrency(change)}`);
-    }
+    if (finalizeBtn) finalizeBtn.disabled = true;
 
     try {
         const response = await fetch('/api/pos/register_sale', {
@@ -842,23 +1376,54 @@ async function finalizeSale() {
             body: JSON.stringify({
                 items: Object.values(saleItems),
                 client_id: selectedClient ? selectedClient._id : null,
-                payment_method: paymentMethod,
-                discount: discount
+                payments: payments,
+                discount: discount,
+                temp_client_name: tempClientName
             })
         });
 
         const result = await response.json();
         if (result.success) {
-            // Imprimir ticket automáticamente
-            printTicket(result.sale_id, paymentMethod === 'Efectivo' ? amountReceived : null, change);
+            // Solo cerrar modal si está visible
+            if (document.getElementById('paymentModal').classList.contains('show')) {
+                paymentModal.hide();
+            }
+            
+            const totalPaid = splitPayments && splitPayments.length > 0 
+                ? splitPayments.reduce((sum, p) => sum + p.amount, 0)
+                : 0;
+            const totalDueText = document.getElementById('payment-total-display');
+            const totalDue = totalDueText 
+                ? parseFloat(totalDueText.textContent.replace(/[^\d.-]/g, ''))
+                : 0;
 
-            alert(result.message);
-            clearSale();
+            printTicket(result.sale_id, totalPaid, totalPaid - totalDue);
+            
+            // Si fue venta a crédito SIN cliente, guardar el ID y mostrar modal para asociar cliente después
+            const hasCreditPayment = payments.some(p => p.method === 'Crédito');
+            if (hasCreditPayment && !selectedClient) {
+                currentCreditSaleId = result.sale_id;
+                alert('Venta a crédito registrada exitosamente. Ahora puedes asociar un cliente.');
+                clearSale();
+                // Mostrar modal para actualizar cliente
+                setTimeout(() => {
+                    const updateModal = new bootstrap.Modal(document.getElementById('updateCreditClientModal'));
+                    updateModal.show();
+                }, 500);
+            } else {
+                alert(result.message);
+                clearSale();
+            }
         } else {
             alert(`Error al registrar la venta: ${result.error}`);
         }
     } catch (error) {
         alert('Error de conexión al registrar la venta.');
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Venta';
+        }
     }
 }
 
@@ -947,6 +1512,54 @@ function updateUI() {
     }
 
     updateSelectionButtons();
+}
+
+async function renderFrequentProducts() {
+    const dropdownList = document.getElementById('frequent-products-list');
+    if (!dropdownList) return;
+
+    // Lista de IDs de productos frecuentes (esto podría venir de una API en el futuro)
+    const frequentProductIds = [
+        "692ee81c966500d603a5b3df", 
+        "692ee829d040180750a5b1d3", 
+        "692ee830d040180750a5b266", 
+        "692ee832d040180750a5b295", 
+        "692ee837d040180750a5b303", 
+        "692ee839d040180750a5b32b", 
+    ];
+
+    try {
+        const response = await fetch('/api/products');
+        const allProducts = await response.json();
+        const productMap = new Map(allProducts.map(p => [p.id, p]));
+
+        dropdownList.innerHTML = ''; // Limpiar el loader
+
+        frequentProductIds.forEach(id => {
+            const product = productMap.get(id);
+            if (product) {
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                link.className = 'dropdown-item';
+                link.href = '#';
+                link.innerHTML = `${product.nombre} <span class="text-muted small">${formatCurrency(product.precio)}</span>`;
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    addProductToSale(product);
+                };
+                listItem.appendChild(link);
+                dropdownList.appendChild(listItem);
+            }
+        });
+
+        if (dropdownList.innerHTML === '') {
+            dropdownList.innerHTML = '<li><a class="dropdown-item text-muted" href="#">No hay productos frecuentes.</a></li>';
+        }
+
+    } catch (error) {
+        console.error("Error cargando productos frecuentes:", error);
+        dropdownList.innerHTML = '<li><a class="dropdown-item text-danger" href="#">Error al cargar.</a></li>';
+    }
 }
 
 async function performProductSearch(term) {
@@ -1138,77 +1751,86 @@ function showReturnModal() {
         // Configurar evento para confirmar devolución
         const confirmReturnBtn = document.getElementById('confirm-return-btn');
         if (confirmReturnBtn) {
-            confirmReturnBtn.onclick = async () => {
-                const returnReason = document.getElementById('return-reason') ?
-                    document.getElementById('return-reason').value : 'otro';
-                const returnData = [];
+            if (!confirmReturnBtn.dataset.listenerAttached) {
+                confirmReturnBtn.dataset.listenerAttached = 'true';
+                confirmReturnBtn.addEventListener('click', async () => {
+                    const returnReason = document.getElementById('return-reason').value;
+                    const itemsToReturn = [];
 
-                selectedItems.forEach(checkbox => {
-                    const itemId = checkbox.getAttribute('data-id');
-                    const input = document.querySelector(`input[data-item-id="${itemId}"]`);
-                    const quantity = input ? parseInt(input.value) || saleItems[itemId].cantidad : saleItems[itemId].cantidad;
+                    document.querySelectorAll('#return-items-list .return-item-card').forEach(card => {
+                        const input = card.querySelector('input[type="number"]');
+                        const itemId = input.dataset.itemId;
+                        const quantity = parseInt(input.value);
+                        const itemData = saleItems[itemId];
 
-                    returnData.push({
-                        product_id: itemId,
-                        quantity: quantity,
-                        reason: returnReason
-                    });
-                });
-
-                try {
-                    const response = await fetch('/api/pos/process_return', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ items: returnData })
+                        if (itemData && quantity > 0) {
+                            itemsToReturn.push({
+                                producto_id: itemData.id,
+                                cantidad: quantity,
+                                precio: itemData.precio
+                            });
+                        }
                     });
 
-                    const result = await response.json();
-                    if (result.success) {
-                        alert(result.message);
-                        // Remover items devueltos de la venta actual
-                        selectedItems.forEach(checkbox => {
-                            const itemId = checkbox.getAttribute('data-id');
-                            delete saleItems[itemId];
+                    try {
+                        const response = await fetch('/api/pos/process_return', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ items: itemsToReturn, reason: returnReason })
                         });
-                        updateUI();
-                        modal.hide();
-                    } else {
-                        alert(`Error: ${result.error}`);
+                        const result = await response.json();
+                        showToast(result.message || result.error, !result.success);
+                        if (result.success) {
+                            // Remover los items devueltos del carrito actual
+                            itemsToReturn.forEach(returnedItem => delete saleItems[returnedItem.producto_id]);
+                            updateUI();
+                            modal.hide();
+                        }
+                    } catch (error) {
+                        showToast('Error de red al procesar la devolución.', true);
                     }
-                } catch (error) {
-                    alert('Error de conexión al procesar la devolución.');
-                }
-            };
+                });
+            }
         }
     }
 }
 
 // Función para actualizar lista de ventas pausadas
 function updateHoldList() {
-    const holdListContainer = document.getElementById('hold-list');
+    const holdListContainer = document.getElementById('hold-list-container');
+    const noHeldSalesMessage = document.getElementById('no-held-sales-message');
+    const heldSalesCountBadge = document.getElementById('held-sales-count');
+
     if (!holdListContainer) return;
 
     holdListContainer.innerHTML = '';
+    let count = 0;
 
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key.startsWith('hold_')) {
+            count++;
             try {
                 const holdData = JSON.parse(localStorage.getItem(key));
                 const holdItem = document.createElement('div');
-                holdItem.className = 'hold-item-card p-3 mb-2 border rounded';
+                holdItem.className = 'list-group-item list-group-item-action flex-column align-items-start';
                 holdItem.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <strong>ID: ${key.split('_')[1]}</strong><br>
+                            <h6 class="mb-1">Venta Pausada #${key.split('_')[1]}</h6>
                             <small class="text-muted">
                                 ${new Date(holdData.timestamp).toLocaleString('es')} - ${Object.keys(holdData.items).length} items
                             </small>
-                            ${holdData.client ? `<br><small>Cliente: ${holdData.client.nombre}</small>` : ''}
+                            ${holdData.client ? `<div class="mt-1"><small><strong>Cliente:</strong> ${holdData.client.nombre}</small></div>` : ''}
+                            ${holdData.note ? `<div class="mt-1 fst-italic"><small>"${holdData.note}"</small></div>` : ''}
                         </div>
                         <div>
-                            <button class="btn btn-primary btn-sm me-2" onclick="resumeSale('${key}')">Continuar</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteHoldSale('${key}')">Eliminar</button>
+                            <button class="btn btn-primary btn-sm me-2" onclick="resumeSale('${key}')" title="Continuar esta venta">
+                                <i class="bi bi-play-circle-fill"></i> Continuar
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteHoldSale('${key}')" title="Eliminar esta venta pausada">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -1216,6 +1838,20 @@ function updateHoldList() {
             } catch (e) {
                 console.error('Error parsing hold data:', e);
             }
+        }
+    }
+
+    // Actualizar UI
+    if (count > 0) {
+        if (noHeldSalesMessage) noHeldSalesMessage.style.display = 'none';
+        if (heldSalesCountBadge) {
+            heldSalesCountBadge.textContent = count;
+            heldSalesCountBadge.style.display = 'inline-block';
+        }
+    } else {
+        if (noHeldSalesMessage) noHeldSalesMessage.style.display = 'block';
+        if (heldSalesCountBadge) {
+            heldSalesCountBadge.style.display = 'none';
         }
     }
 }
@@ -1228,6 +1864,7 @@ function resumeSale(holdKey) {
     discount = holdData.discount;
 
     localStorage.removeItem(holdKey);
+    heldSalesModal.hide();
     updateUI();
     updateHoldList();
 
@@ -1259,6 +1896,204 @@ function clearClientSelection() {
     // Reset panels
     if (clearClientBtn) clearClientBtn.click();
 }
+
+// ===== FUNCIONALIDAD PARA ACTUALIZAR CLIENTE EN VENTA A CRÉDITO =====
+// Modal de actualizar cliente
+const updateCreditClientModal = new bootstrap.Modal(document.getElementById('updateCreditClientModal'));
+const updateClientSearchInput = document.getElementById('update-client-search');
+const clearUpdateClientBtn = document.getElementById('clear-update-client-btn');
+const updateClientResultsDiv = document.getElementById('update-client-results');
+const confirmUpdateCreditClientBtn = document.getElementById('confirm-update-credit-client-btn');
+
+let selectedUpdateClient = null; // Cliente seleccionado en el modal de actualización
+
+// Buscar cliente en el modal de actualización
+if (updateClientSearchInput) {
+    updateClientSearchInput.addEventListener('input', async (e) => {
+        const searchTerm = e.target.value.trim();
+        if (searchTerm.length < 2) {
+            updateClientResultsDiv.innerHTML = '';
+            selectedUpdateClient = null;
+            confirmUpdateCreditClientBtn.disabled = true;
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/clients/search?q=${encodeURIComponent(searchTerm)}`);
+            const result = await response.json();
+            
+            if (result.success && result.clients.length > 0) {
+                updateClientResultsDiv.innerHTML = '';
+                result.clients.forEach(client => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'list-group-item list-group-item-action cursor-pointer';
+                    itemDiv.style.cursor = 'pointer';
+                    itemDiv.innerHTML = `
+                        <strong>${client.nombre}</strong><br>
+                        <small class="text-muted">RNC: ${client.rnc || 'N/A'} | Teléfono: ${client.telefono || 'N/A'}</small>
+                    `;
+                    itemDiv.addEventListener('click', () => {
+                        selectedUpdateClient = client;
+                        updateClientSearchInput.value = client.nombre;
+                        updateClientResultsDiv.innerHTML = '';
+                        confirmUpdateCreditClientBtn.disabled = false;
+                    });
+                    updateClientResultsDiv.appendChild(itemDiv);
+                });
+            } else {
+                updateClientResultsDiv.innerHTML = '<p class="text-muted text-center py-3">No se encontraron clientes</p>';
+                selectedUpdateClient = null;
+                confirmUpdateCreditClientBtn.disabled = true;
+            }
+        } catch (error) {
+            console.error('Error buscando cliente:', error);
+            updateClientResultsDiv.innerHTML = '<p class="text-danger text-center py-3">Error al buscar clientes</p>';
+        }
+    });
+}
+
+// Limpiar búsqueda
+if (clearUpdateClientBtn) {
+    clearUpdateClientBtn.addEventListener('click', () => {
+        updateClientSearchInput.value = '';
+        updateClientResultsDiv.innerHTML = '';
+        selectedUpdateClient = null;
+        confirmUpdateCreditClientBtn.disabled = true;
+    });
+}
+
+// Confirmar actualización de cliente
+if (confirmUpdateCreditClientBtn) {
+    confirmUpdateCreditClientBtn.addEventListener('click', async () => {
+        if (!currentCreditSaleId || !selectedUpdateClient) {
+            alert('Error: No hay venta o cliente seleccionado');
+            return;
+        }
+
+        confirmUpdateCreditClientBtn.disabled = true;
+        confirmUpdateCreditClientBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Actualizando...';
+
+        try {
+            const response = await fetch('/api/pos/update_sale_client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sale_id: currentCreditSaleId,
+                    client_id: selectedUpdateClient._id
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('Cliente asociado exitosamente a la venta a crédito.');
+                updateCreditClientModal.hide();
+                currentCreditSaleId = null;
+                selectedUpdateClient = null;
+                updateClientSearchInput.value = '';
+                updateClientResultsDiv.innerHTML = '';
+            } else {
+                alert(`Error al actualizar: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de conexión al actualizar cliente');
+        } finally {
+            confirmUpdateCreditClientBtn.disabled = false;
+            confirmUpdateCreditClientBtn.innerHTML = '<i class="bi bi-check-circle"></i> Asociar Cliente';
+        }
+    });
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script>
+// QuaggaJS for POS Modal
+window.posScanner = (function() {
+    let isModalScannerActive = false;
+    let lastScannedCodeModal = null;
+    const modalViewport = document.getElementById('pos-scanner-viewport');
+    const modalStatus = document.getElementById('pos-scanner-status');
+    const modalVideo = modalViewport ? modalViewport.querySelector('video') : null;
+    const modalCanvas = modalViewport ? modalViewport.querySelector('canvas') : null;
+
+    function updateModalScannerStatus(message, type = 'secondary') {
+        if (modalStatus) {
+            modalStatus.innerHTML = `<i class="bi bi-circle-fill text-${type}"></i> ${message}`;
+        }
+    }
+
+    const handleModalDetection = (result) => {
+        const code = result.codeResult.code;
+
+        if (code === lastScannedCodeModal) {
+            return;
+        }
+        lastScannedCodeModal = code;
+        updateModalScannerStatus('Código detectado - procesando...', 'info');
+
+        // Call the main POS function to add product
+        // processBarcodeScanForPOS is defined in the main script block of pos.html
+        if (typeof processBarcodeScanForPOS === 'function') {
+            processBarcodeScanForPOS(code);
+        } else {
+            console.error("processBarcodeScanForPOS no está definida.");
+        }
+
+        setTimeout(() => {
+            lastScannedCodeModal = null;
+            if (modalStatus && modalStatus.textContent.includes('procesando')) {
+                updateModalScannerStatus('Escáner activo. Apunte al código de barras.', 'primary');
+            }
+        }, 800); // Cooldown
+    };
+
+    function init() {
+        if (isModalScannerActive) return;
+
+        updateModalScannerStatus('Inicializando escáner...', 'warning');
+
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: modalViewport,
+                constraints: {
+                    width: { min: 320 }, // Smaller for modal
+                    height: { min: 240 },
+                    facingMode: "environment"
+                },
+            },
+            decoder: { readers: ["ean_reader", "code_128_reader", "upc_reader"] },
+            locate: true,
+            locator: { patchSize: "medium", halfSample: true },
+            numOfWorkers: navigator.hardwareConcurrency || 4,
+        }, function(err) {
+            if (err) {
+                console.error("Error al iniciar Quagga en modal:", err);
+                updateModalScannerStatus('Error al iniciar escáner', 'danger');
+                return;
+            }
+            console.log("Escáner de modal inicializado correctamente.");
+            Quagga.start();
+            isModalScannerActive = true;
+            updateModalScannerStatus('Escáner activo. Apunte al código de barras.', 'primary');
+        });
+
+        Quagga.onDetected(handleModalDetection);
+    }
+
+    function stop() {
+        if (isModalScannerActive) {
+            Quagga.stop();
+            isModalScannerActive = false;
+            updateModalScannerStatus('Escáner detenido', 'warning');
+        }
+    }
+
+    return {
+        init: init,
+        stop: stop
+    };
+})();
 </script>
 
 <style>
@@ -1266,7 +2101,7 @@ function clearClientSelection() {
 .pos-header {
     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     color: white;
-    padding: 20px 0;
+    padding: 20px;
     margin-bottom: 20px;
     border-radius: 10px;
 }
@@ -1278,7 +2113,7 @@ function clearClientSelection() {
 /* Search Cards */
 .search-section .search-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Alinea al inicio para mejor distribución vertical */
     padding: 15px;
     border: 2px solid #e9ecef;
     border-radius: 10px;
@@ -1326,6 +2161,7 @@ function clearClientSelection() {
 
 .search-input {
     flex: 1;
+    position: relative; /* Clave para que los resultados se posicionen correctamente */
 }
 
 .search-results {
@@ -1340,6 +2176,11 @@ function clearClientSelection() {
     max-height: 200px;
     overflow-y: auto;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* Ocultar el contenedor de resultados cuando está vacío para evitar la línea blanca */
+.search-results:empty {
+    display: none;
 }
 
 /* Client Selection */
@@ -1418,6 +2259,14 @@ function clearClientSelection() {
     border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 500;
+}
+
+.stat-badge#total-units-label {
+    background-color: #e7f3ff;
+    color: #0056b3;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border: 1px solid #b3d7ff;
 }
 
 .panel-tools {
@@ -1713,9 +2562,149 @@ function clearClientSelection() {
     background: #ffecb5;
 }
 
+.secondary-action.info {
+    background: #cff4fc;
+    color: #055160;
+    border: 1px solid #b6effb;
+}
+
+.secondary-action.info:hover {
+    background: #aeeaf8;
+}
+
 .returns-section {
     padding: 15px 20px;
     background: #f8f9fa;
+}
+
+/* ESCÁNER FLOTANTE EN POS */
+.fab-scanner {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.fab-scanner:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+}
+
+.fab-scanner:active {
+    transform: scale(0.95);
+}
+
+.floating-scanner-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    animation: fadeIn 0.3s ease;
+}
+
+.floating-scanner-panel {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.floating-scanner-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+.floating-scanner-body {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.scanner-mini-view {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.floating-scanner-target {
+    width: 100%;
+    max-width: 280px;
+    height: 210px;
+    background: #343a40;
+    border-radius: 6px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.floating-scanner-target.auto-mode {
+    background: linear-gradient(45deg, #007bff, #6610f2);
+}
+
+.floating-scanner-target.auto-mode::after {
+    content: "Cámara Automática Active";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.floating-scanner-controls {
+    display: flex;
+    gap: 10px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Items List Styles */
@@ -1837,6 +2826,19 @@ function clearClientSelection() {
 .action-btn.remove:hover {
     background: #f1aeb5;
 }
+
+/* Estilos para botones de cantidad en el carrito */
+.item-subtotal .btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
 </style>
 
 {% endblock %}

@@ -96,6 +96,11 @@
 
             accountsReceivable.forEach(account => {
                 const row = document.createElement('tr');
+                // Botones: Ver/Imprimir (abre la vista HTML) y Descargar PDF
+                const viewBtn = `<a class="btn btn-sm btn-outline-primary me-1" target="_blank" href="/api/pos/print_ticket/${account.venta_id}"><i class="bi bi-eye"></i> Ver</a>`;
+                const pdfBtn = `<a class="btn btn-sm btn-outline-secondary me-1" target="_blank" href="/api/pos/print_ticket_pdf/${account.venta_id}"><i class="bi bi-file-earmark-pdf"></i> PDF</a>`;
+                const payBtn = account.saldo_pendiente > 0 ? `<button class="btn btn-sm btn-success pay-btn" data-invoice-id="${account.venta_id}" data-client="${account.cliente_nombre}" data-balance="${account.saldo_pendiente}"><i class="bi bi-cash"></i> Abonar</button>` : '<span class="badge bg-success">Pagada</span>';
+
                 row.innerHTML = `
                     <td>${account.venta_id}</td>
                     <td>${new Date(account.fecha).toLocaleDateString()}</td>
@@ -103,7 +108,7 @@
                     <td>${formatCurrency(account.total)}</td>
                     <td>${formatCurrency(account.saldo_pendiente)}</td>
                     <td>
-                        ${account.saldo_pendiente > 0 ? `<button class="btn btn-sm btn-success pay-btn" data-invoice-id="${account.venta_id}" data-client="${account.cliente_nombre}" data-balance="${account.saldo_pendiente}"><i class="bi bi-cash"></i> Abonar</button>` : '<span class="badge bg-success">Pagada</span>'}
+                        ${viewBtn}${pdfBtn}${payBtn}
                     </td>
                 `;
                 tableBody.appendChild(row);

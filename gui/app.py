@@ -1,5 +1,6 @@
 import customtkinter as ctk
 
+import threading
 from .inventory_frame import InventoryFrame
 from .pos_frame import PosFrame
 from .reports_frame import ReportsFrame
@@ -9,7 +10,9 @@ from .returns_frame import ReturnsFrame
 from .accounts_payable_frame import AccountsPayableFrame
 from .clients_frame import ClientsFrame # Importar nuevo frame de clientes
 from .quotation_frame import QuotationFrame # Importar nuevo frame de cotizaciones
+from .cash_closing_frame import CashClosingFrame # Importar nuevo frame de Cierre de Caja
 from .accounts_receivable_frame import AccountsReceivableFrame # Importar nuevo frame de cuentas por cobrar
+import database.database as database
 
 class App(ctk.CTk):
     def __init__(self):
@@ -18,12 +21,15 @@ class App(ctk.CTk):
         self.title("Sistema de Inventario y Ventas")
         self.geometry("1100x580")
 
+        # Inicializar la base de datos local para modo offline
+        database.inicializar_db_local()
+
         self.current_user = None
 
         # Configurar el layout principal (1x2)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        
+
         # --- Frame de Navegación (Izquierda) ---
         self.navigation_frame = ctk.CTkFrame(self, corner_radius=0)
         self.navigation_frame.grid(row=0, column=0, sticky="nsew")
@@ -57,11 +63,18 @@ class App(ctk.CTk):
         self.btn_cuentas_pagar = ctk.CTkButton(self.navigation_frame, text="Cuentas por Pagar", command=self.mostrar_frame_cuentas_pagar)
         self.btn_cuentas_pagar.grid(row=8, column=0, padx=20, pady=10, sticky="ew")
 
+        self.btn_cierre_caja = ctk.CTkButton(self.navigation_frame, text="Cierre de Caja", command=self.mostrar_frame_cierre_caja)
+        self.btn_cierre_caja.grid(row=9, column=0, padx=20, pady=10, sticky="ew")
+
         self.btn_gestion_usuarios = ctk.CTkButton(self.navigation_frame, text="Gestionar Usuarios", command=self.mostrar_frame_gestion_usuarios)
-        self.btn_gestion_usuarios.grid(row=9, column=0, padx=20, pady=10, sticky="ew")
+        self.btn_gestion_usuarios.grid(row=10, column=0, padx=20, pady=10, sticky="ew")
+
+        # --- Indicador de Estado Online/Offline ---
+        self.status_label = ctk.CTkLabel(self.navigation_frame, text="Estado: Desconocido", font=ctk.CTkFont(size=12))
+        self.status_label.grid(row=11, column=0, padx=20, pady=(10, 5), sticky="s")
 
         self.logout_button = ctk.CTkButton(self.navigation_frame, text="Cerrar Sesión", fg_color="#D32F2F", hover_color="#B71C1C", command=self.logout)
-        self.logout_button.grid(row=11, column=0, padx=20, pady=20, sticky="s")
+        self.logout_button.grid(row=12, column=0, padx=20, pady=20, sticky="s")
 
         # --- Frame Principal (Derecha) ---
         self.main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
@@ -72,6 +85,10 @@ class App(ctk.CTk):
         self.login_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         # Ocultar el frame principal al inicio
+        self.hide_main_ui()
+
+    def hide_main_ui(self):
+        """Oculta la interfaz principal de la aplicación."""
         self.navigation_frame.grid_remove()
         self.main_frame.grid_remove()
 
@@ -79,9 +96,28 @@ class App(ctk.CTk):
         self.current_user = user_info
         self.login_frame.grid_remove() # Ocultar el frame de login
 
-        # Mostrar los frames principales
-        self.navigation_frame.grid()
-        self.main_frame.grid()
+        # Iniciar la actualización de la caché en segundo plano
+        cache_thread = threading.Thread(target=database.guardar_datos_en_cache, daemon=True)
+        cache_thread.start()
+
+        # Iniciar la sincronización de ventas pendientes en segundo plano
+        sync_thread = threading.Thread(target=database.sincronizar_ventas_pendientes, daemon=True)
+        sync_thread.start()
+
+        # Iniciar la sincronización de otros cambios (productos, clientes)
+        changes_sync_thread = threading.Thread(target=database.sincronizar_cambios_pendientes, daemon=True)
+        changes_sync_thread.start()
+
+        full_sync_thread = threading.Thread(target=self.sincronizar_datos_completo, daemon=True)
+        full_sync_thread.start()
+
+        # Mostrar la interfaz principal
+        self.show_main_ui()
+
+        # Iniciar la verificación del estado de la conexión
+        self.check_connection_status()
+
+    def show_main_ui(self):
 
         # Aplicar permisos
         if self.current_user['role'] == 'Cajero':
@@ -97,15 +133,16 @@ class App(ctk.CTk):
             self.btn_clientes.grid()
             self.btn_cuentas_cobrar.grid()
             self.btn_cuentas_pagar.grid()
+            self.btn_cierre_caja.grid()
             self.btn_gestion_usuarios.grid()
 
+        self.navigation_frame.grid(row=0, column=0, sticky="nsew")
+        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.mostrar_frame_bienvenida()
 
     def logout(self):
         self.current_user = None
-        # Ocultar frames principales
-        self.navigation_frame.grid_remove()
-        self.main_frame.grid_remove()
+        self.hide_main_ui()
         # Mostrar el frame de login
         self.login_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
@@ -172,3 +209,53 @@ class App(ctk.CTk):
             widget.destroy()
         self.quotation_frame = QuotationFrame(master=self.main_frame)
         self.quotation_frame.on_show()
+
+    def mostrar_frame_cierre_caja(self):
+        # Limpiar el frame principal
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+        self.cash_closing_frame = CashClosingFrame(master=self.main_frame, current_user=self.current_user)
+
+    def sincronizar_datos_completo(self):
+        """
+        Sincroniza todos los datos desde MongoDB a SQLite, eliminando los datos previos.
+        """
+        print("Iniciando sincronización completa de datos desde MongoDB a SQLite...")
+
+        try:
+            # Limpiar las tablas locales antes de sincronizar
+            database.limpiar_tabla_local('productos')
+            database.limpiar_tabla_local('clientes')
+
+            # Sincronizar productos
+            productos = database.obtener_productos()
+            if productos:
+                print(f"Guardando {len(productos)} productos localmente.")
+                for producto in productos:
+                    database.guardar_producto_local(producto)
+            else:
+                print("No se encontraron productos para sincronizar.")
+
+            # Sincronizar clientes
+            clientes = database.obtener_clientes()
+            if clientes:
+                print(f"Guardando {len(clientes)} clientes localmente.")
+                for cliente in clientes:
+                    database.guardar_cliente_local(cliente)
+            else:
+                print("No se encontraron clientes para sincronizar.")
+
+            print("Sincronización completa de datos finalizada.")
+
+        except Exception as e:
+            print(f"Error durante la sincronización completa de datos: {e}")
+
+    def check_connection_status(self):
+        """Verifica el estado de la conexión y actualiza el indicador visual."""
+        if database.is_db_connected():
+            self.status_label.configure(text="● En Línea", text_color="#28a745") # Verde
+        else:
+            self.status_label.configure(text="● Offline", text_color="#D32F2F") # Rojo
+        
+        # Programar la próxima verificación en 15 segundos (15000 ms)
+        self.after(15000, self.check_connection_status)

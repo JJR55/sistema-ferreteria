@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+
+{% block title %}Escáner de Códigos{% endblock %}
+
+{% block page_title %}<i class="bi bi-upc-scan"></i> Escáner de Inventario{% endblock %}
+
+{% block breadcrumb %}Escáner{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+
+            <!-- Selector de Modo -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <label for="scanner-mode" class="form-label fw-bold">Modo de Escaneo:</label>
+                            <select id="scanner-mode" class="form-select">
+                                <option value="auto" selected>Automático (Navegador)</option>
+                                <option value="mobile">Cámara Externa (iVCam)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <p id="mode-description" class="text-muted small mb-0 mt-2"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel del Escáner -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-camera-video-fill"></i> Visor de la Cámara</h5>
+                </div>
+                <div class="card-body text-center">
+                    <!-- Contenedor para MODO AUTOMÁTICO (QuaggaJS) -->
+                    <div id="scanner-auto">
+                        <div id="interactive" class="viewport mx-auto" style="max-width: 480px; min-height: 360px; position: relative; background: #000; border-radius: 8px; overflow: hidden;">
+                            <div id="camera-overlay" class="d-flex justify-content-center align-items-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); cursor: pointer;">
+                                <button id="activate-camera-btn" class="btn btn-light">
+                                    <i class="bi bi-camera-fill"></i> Activar Cámara del Navegador
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor para MODO MÓVIL (iVCam + Python) -->
+                    <div id="scanner-mobile" style="display: none;">
+                        <img id="video-feed" src="" class="img-fluid rounded" style="background-color: #000; min-height: 360px; max-width: 480px;" alt="Video Stream">
+                    </div>
+
+                    <div id="scanner-status" class="mt-2 text-muted">Presione "Activar Cámara" para comenzar</div>
+                    <div class="mt-2">
+                        <button id="toggle-camera-btn" class="btn btn-sm btn-outline-info" style="display: none;">
+                            <i class="bi bi-arrow-repeat"></i> Cambiar Cámara (Frontal/Trasera)
+                        </button>
+                        <button id="capture-frame-btn" class="btn btn-sm btn-success" style="display: none;">Capturar Frame</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Productos Escaneados -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-list-check text-success"></i> Productos Escaneados</h5>
+                        <span id="products-count" class="badge bg-secondary rounded-pill">0 productos</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="product-list" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center text-muted p-5">
+                            <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Los productos escaneados aparecerán aquí.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button id="confirm-stock" class="btn btn-success">
+                        <i class="bi bi-check-circle-fill"></i> Confirmar y Agregar al Stock
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Loader -->
+<div id="loader" class="d-none justify-content-center align-items-center" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); z-index: 1060;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="toast-element" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+        <div class="toast-body" id="toast-message">
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+{% endblock %}

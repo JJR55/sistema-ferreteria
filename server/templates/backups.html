@@ -1,0 +1,477 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Backups - Sistema Ferretería{% endblock %}
+
+{% block page_title %}💾 Gestión de Backups{% endblock %}
+
+{% block breadcrumb %}Sistema / Backups{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header con acciones principales -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">Sistema de Respaldos y Recuperación</h5>
+                            <span class="text-muted small">Gestiona backups automáticos y manuales de tu base de datos</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" onclick="checkSystemHealth()">
+                                <i class="bi bi-activity"></i> Estado del Sistema
+                            </button>
+                            <button class="btn btn-success" onclick="createManualBackup()">
+                                <i class="bi bi-cloud-plus"></i> Crear Backup Manual
+                            </button>
+                            <button class="btn btn-warning" onclick="toggleAutoBackups()">
+                                <i class="bi bi-gear"></i> Configurar Automáticos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de estado del sistema -->
+    <div class="row mb-4">
+        <div class="col-12" id="health-panel">
+            <!-- Se carga dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Resumen de backups -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-cloud"></i> Respaldos Recientes</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="backups-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID Backup</th>
+                                    <th>Tipo</th>
+                                    <th>Fecha Creación</th>
+                                    <th>Tamaño</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backups-body">
+                                <!-- Las filas se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del sistema -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Información del Sistema</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="border-start border-primary border-4 ps-3">
+                                <small class="text-muted">Base de Datos</small>
+                                <div class="fw-bold">MongoDB Atlas</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="border-start border-success border-4 ps-3">
+                                <small class="text-muted">Respaldos Automáticos</small>
+                                <div class="fw-bold" id="auto-backup-status">Activados (2:00 AM)</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="border-start border-warning border-4 ps-3">
+                                <small class="text-muted">Último Respaldop</small>
+                                <div class="fw-bold" id="last-backup">Calculando...</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="border-start border-info border-4 ps-3">
+                                <small class="text-muted">Plan de Recuperación</small>
+                                <div class="small">Recuperación punto en tiempo disponible</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pedidos a proveedores -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-truck"></i> Pedidos a Proveedores</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showSupplierOrders()">
+                        Ver Todos
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="supplier-orders-preview">
+                        <!-- Se carga dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de configuración de backups automáticos -->
+    <div class="modal fade" id="autoBackupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Configurar Backups Automáticos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="backup-config-form">
+                        <div class="mb-3">
+                            <label class="form-label">Frecuencia</label>
+                            <select class="form-select" id="backup-frequency">
+                                <option value="daily" selected>Diario</option>
+                                <option value="weekly">Semanal</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="custom-time-container">
+                            <label class="form-label">Hora personalizada</label>
+                            <input type="time" class="form-control" id="backup-time" value="02:00">
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="backup-compression" checked>
+                                <label class="form-check-label">
+                                    Comprimir backups
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="backup-cloud" checked>
+                                <label class="form-check-label">
+                                    Respaldar en nube
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveBackupConfig()">Guardar Configuración</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de restauración -->
+    <div class="modal fade" id="restoreModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Restaurar Backup</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        La restauración reemplazará completamente todos los datos actuales.
+                        Esta acción no se puede deshacer.
+                    </div>
+                    <p id="restore-confirm-text">¿Está seguro de que desea restaurar <strong id="restore-backup-id"></strong>?</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirm-restore">
+                        <label class="form-check-label">
+                            Confirmo que entiendo que esto reemplazará todos los datos actuales
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="proceedRestore()" disabled id="restore-btn">
+                        Restaurar Backup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+let allBackups = [];
+let currentRestoreBackup = '';
+
+// Cargar datos iniciales
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemHealth();
+    loadBackups();
+    loadSupplierOrdersPreview();
+});
+
+// Cargar estado del sistema
+function loadSystemHealth() {
+    fetch('/api/system/health')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const health = data.health;
+                document.getElementById('last-backup').textContent = health.database.last_backup ?
+                    new Date(health.database.last_backup).toLocaleString('es-ES') :
+                    'Nunca';
+
+                const healthHtml = `
+                    <div class="card shadow-sm bg-${health.database.status === 'online' ? 'success' : 'danger'} text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Sistema Operativo</h6>
+                                    <small>Base de datos: MongoDB Atlas</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">${health.database.status.toUpperCase()}</div>
+                                    <small>Última verificación: ${new Date().toLocaleTimeString('es-ES')}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('health-panel').innerHTML = healthHtml;
+            }
+        })
+        .catch(error => console.error('Error cargando estado del sistema:', error));
+}
+
+// Cargar lista de backups
+function loadBackups() {
+    fetch('/api/backup/list')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                allBackups = data;
+                renderBackupsTable(data);
+            }
+        })
+        .catch(error => console.error('Error cargando backups:', error));
+}
+
+function renderBackupsTable(backups) {
+    const tbody = document.getElementById('backups-body');
+    tbody.innerHTML = '';
+
+    if (backups.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i class="bi bi-cloud-slash fs-2"></i><br>
+                    No hay respaldos disponibles
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    backups.forEach(backup => {
+        const fecha = new Date(backup.fecha).toLocaleString('es-ES');
+        const tipoClass = backup.tipo === 'automatico' ? 'badge bg-success' : 'badge bg-primary';
+        const estadoClass = backup.estado === 'Completado' ? 'text-success' : 'text-warning';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><code>${backup.backup_id}</code></td>
+            <td><span class="${tipoClass}">${backup.tipo}</span></td>
+            <td>${fecha}</td>
+            <td><small class="text-muted">${backup.tamaño}</small></td>
+            <td><span class="${estadoClass}">${backup.estado}</span></td>
+            <td>
+                ${backup.estado === 'Completado' ? `
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="downloadBackup('${backup.backup_id}')" title="Descargar">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="showRestoreModal('${backup.backup_id}')" title="Restaurar">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteBackup('${backup.backup_id}')" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                ` : `
+                    <button class="btn btn-sm btn-outline-secondary" disabled>
+                        <i class="bi bi-clock"></i> Procesando...
+                    </button>
+                `}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Crear backup manual
+function createManualBackup() {
+    if (!confirm('¿Crear un respaldo manual de la base de datos? Esto puede tardar unos minutos.')) {
+        return;
+    }
+
+    const createBtn = document.querySelector('button[onclick="createManualBackup()"]');
+    createBtn.disabled = true;
+    createBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creando...';
+
+    fetch('/api/backup/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // No enviar datos específicos por ahora
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message || data.error);
+        if (data.success) {
+            loadBackups(); // Recargar lista
+            loadSystemHealth(); // Actualizar estado
+        }
+    })
+    .catch(error => {
+        console.error('Error creando backup:', error);
+        alert('Error al crear respaldo');
+    })
+    .finally(() => {
+        createBtn.disabled = false;
+        createBtn.innerHTML = '<i class="bi bi-cloud-plus"></i> Crear Backup Manual';
+    });
+}
+
+// Mostrar modal de restauración
+function showRestoreModal(backupId) {
+    document.getElementById('restore-backup-id').textContent = backupId;
+    document.getElementById('confirm-restore').checked = false;
+    document.getElementById('restore-btn').disabled = true;
+    currentRestoreBackup = backupId;
+
+    // Event listener para checkbox
+    document.getElementById('confirm-restore').addEventListener('change', function(e) {
+        document.getElementById('restore-btn').disabled = !e.target.checked;
+    });
+
+    const restoreModal = new bootstrap.Modal(document.getElementById('restoreModal'));
+    restoreModal.show();
+}
+
+// Proceder con restauración
+function proceedRestore() {
+    fetch(`/api/backup/restore/${currentRestoreBackup}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message || data.error);
+        if (data.success) {
+            // Cerrar modal y mostrar mensaje de reinicio
+            const modal = bootstrap.Modal.getInstance(document.getElementById('restoreModal'));
+            modal.hide();
+
+            // Mostrar mensaje de que el sistema necesita reiniciarse
+            setTimeout(() => {
+                alert('Sistema restaurado exitosamente. La aplicación se recargará.');
+                location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error restaurando backup:', error);
+        alert('Error al restaurar respaldo');
+    });
+}
+
+// Verificar estado del sistema
+function checkSystemHealth() {
+    loadSystemHealth();
+    alert('Estado del sistema verificado y actualizado.');
+}
+
+// Configurar backups automáticos
+function toggleAutoBackups() {
+    const autoBackupModal = new bootstrap.Modal(document.getElementById('autoBackupModal'));
+    autoBackupModal.show();
+}
+
+function saveBackupConfig() {
+    const config = {
+        frequency: document.getElementById('backup-frequency').value,
+        custom_time: document.getElementById('backup-time').value,
+        compression: document.getElementById('backup-compression').checked,
+        cloud: document.getElementById('backup-cloud').checked
+    };
+
+    // Aquí se podría guardar en la base de datos
+    // Por ahora solo mostramos que se guardó
+    localStorage.setItem('backup_config', JSON.stringify(config));
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('autoBackupModal'));
+    modal.hide();
+
+    alert('Configuración de backups automáticos guardada exitosamente.');
+}
+
+// Cargar pedidos de proveedores (preview)
+function loadSupplierOrdersPreview() {
+    fetch('/api/supplier/orders')
+        .then(response => response.json())
+        .then(data => {
+            const preview = document.getElementById('supplier-orders-preview');
+
+            if (data && data.length > 0) {
+                const recentOrders = data.slice(0, 3); // Últimas 3 órdenes
+                const html = recentOrders.map(order => `
+                    <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
+                        <div>
+                            <small class="fw-bold">${order.proveedor_nombre}</small><br>
+                            <small class="text-muted">${new Date(order.fecha_pedido).toLocaleDateString('es-ES')}</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="fw-bold">${order.total.toLocaleString('es-ES', { style: 'currency', currency: 'DOP' })}</small><br>
+                            <span class="badge bg-${order.estado === 'Enviado' ? 'success' : 'secondary'}">${order.estado}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                preview.innerHTML = html;
+            } else {
+                preview.innerHTML = '<small class="text-muted">No hay pedidos recientes</small>';
+            }
+        })
+        .catch(error => console.error('Error cargando pedidos:', error));
+}
+
+function showSupplierOrders() {
+    // Esta función abriría una página completa de pedidos de proveedores
+    // Por ahora redirigimos al dashboard
+    alert('Funcionalidad de pedidos de proveedores disponible próximamente en la sección de Proveedores.');
+}
+
+// Funciones placeholder para futuras implementaciones
+function downloadBackup(backupId) {
+    alert('Función de descarga próximamente disponible.');
+}
+
+function deleteBackup(backupId) {
+    if (confirm('¿Eliminar este respaldo permanentemente?')) {
+        alert('Función de eliminación próximamente disponible.');
+    }
+}
+
+// Refrescar datos cada 30 segundos
+setInterval(() => {
+    loadSystemHealth();
+}, 30000);
+</script>
+
+{% endblock %}

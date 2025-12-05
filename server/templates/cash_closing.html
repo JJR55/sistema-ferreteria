@@ -1,0 +1,225 @@
+{% extends "layout.html" %}
+
+{% block title %}Cierre de Caja - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-safe"></i> Cierre de Caja{% endblock %}
+
+{% block breadcrumb %}Cierre de Caja{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Columna de Controles y Arqueo -->
+        <div class="col-lg-8">
+            <!-- Controles de Fecha -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Seleccionar Período</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <label for="start-date" class="form-label">Desde</label>
+                            <input type="date" id="start-date" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="end-date" class="form-label">Hasta</label>
+                            <input type="date" id="end-date" class="form-control">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button id="generate-report-btn" class="btn btn-primary w-100">
+                                <i class="bi bi-calculator-fill"></i> Generar Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arqueo de Caja -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Arqueo de Caja (Efectivo)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="counted-cash" class="form-label">Monto Contado en Caja (Efectivo)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">RD$</span>
+                            <input type="number" id="counted-cash" class="form-control form-control-lg" placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas Adicionales</label>
+                        <textarea id="notes" class="form-control" rows="3" placeholder="Ej: Se retiraron RD$ 500 para gastos menores..."></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button id="finalize-closing-btn" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle-fill"></i> Finalizar y Guardar Cierre
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna de Resumen -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Resumen del Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <div id="summary-content">
+                        <div class="text-center text-muted p-4">
+                            <p>Genere un reporte para ver el resumen de ventas.</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div id="difference-summary" class="text-center">
+                        <h6 class="text-muted">DIFERENCIA</h6>
+                        <h2 id="difference-amount" class="fw-bold">RD$ 0.00</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const generateBtn = document.getElementById('generate-report-btn');
+    const summaryContent = document.getElementById('summary-content');
+    const countedCashInput = document.getElementById('counted-cash');
+    const differenceAmount = document.getElementById('difference-amount');
+    const finalizeBtn = document.getElementById('finalize-closing-btn');
+    const notesInput = document.getElementById('notes');
+
+    let currentSummary = {};
+
+    // Set default dates to today
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.value = today;
+    endDateInput.value = today;
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+    }
+
+    function calculateDifference() {
+        const counted = parseFloat(countedCashInput.value) || 0;
+        const expected = currentSummary.Efectivo || 0;
+        const diff = counted - expected;
+
+        differenceAmount.textContent = formatCurrency(diff);
+        if (diff > 0) {
+            differenceAmount.className = 'fw-bold text-success';
+            differenceAmount.textContent += ' (Sobrante)';
+        } else if (diff < 0) {
+            differenceAmount.className = 'fw-bold text-danger';
+            differenceAmount.textContent += ' (Faltante)';
+        } else {
+            differenceAmount.className = 'fw-bold text-muted';
+        }
+    }
+
+    generateBtn.addEventListener('click', async () => {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        if (!startDate || !endDate) {
+            alert('Por favor, seleccione ambas fechas.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/cash_closing/summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start_date: startDate, end_date: endDate })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                currentSummary = result.summary;
+                let totalVentas = 0;
+                let summaryHTML = '<ul class="list-group list-group-flush">';
+                
+                const paymentMethods = ['Efectivo', 'Tarjeta', 'Transferencia', 'Crédito'];
+                paymentMethods.forEach(method => {
+                    const amount = currentSummary[method] || 0;
+                    totalVentas += amount;
+                    summaryHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                        ${method} esperado:
+                                        <span class="badge bg-primary rounded-pill">${formatCurrency(amount)}</span>
+                                    </li>`;
+                });
+
+                summaryHTML += `<li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                    Total Ventas:
+                                    <span>${formatCurrency(totalVentas)}</span>
+                                </li></ul>`;
+                
+                summaryContent.innerHTML = summaryHTML;
+                calculateDifference();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error de red al generar el reporte.');
+        }
+    });
+
+    countedCashInput.addEventListener('input', calculateDifference);
+
+    finalizeBtn.addEventListener('click', async () => {
+        if (Object.keys(currentSummary).length === 0) {
+            alert('Primero debe generar un reporte de cierre.');
+            return;
+        }
+
+        const counted = parseFloat(countedCashInput.value) || 0;
+        const expected = currentSummary.Efectivo || 0;
+        const difference = counted - expected;
+
+        if (!confirm(`¿Confirma que desea guardar este cierre con una diferencia de ${formatCurrency(difference)}?`)) {
+            return;
+        }
+
+        const closingData = {
+            fecha_inicio_periodo: startDateInput.value,
+            fecha_fin_periodo: endDateInput.value,
+            total_esperado_efectivo: expected,
+            total_contado_efectivo: counted,
+            diferencia_efectivo: difference,
+            total_tarjeta: currentSummary.Tarjeta || 0,
+            total_transferencia: currentSummary.Transferencia || 0,
+            total_credito: currentSummary.Crédito || 0,
+            total_ventas: Object.values(currentSummary).reduce((a, b) => a + b, 0),
+            notas: notesInput.value
+        };
+
+        try {
+            const response = await fetch('/api/cash_closing/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(closingData)
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+            if (result.success) {
+                // Limpiar campos
+                countedCashInput.value = '';
+                notesInput.value = '';
+                summaryContent.innerHTML = '<div class="text-center text-muted p-4"><p>Genere un nuevo reporte.</p></div>';
+                differenceAmount.textContent = formatCurrency(0);
+            }
+        } catch (error) {
+            alert('Error de red al guardar el cierre.');
+        }
+    });
+});
+</script>
+{% endblock %}

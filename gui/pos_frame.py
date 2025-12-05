@@ -318,14 +318,30 @@ class PosFrame(ctk.CTkFrame):
             items = list(self.current_sale_items.values())
             cliente_id = self.selected_client['_id'] if self.selected_client else None
 
-            venta_id = database.registrar_venta(items, total, itbis_incluido, self.descuento_aplicado, self.current_user['id'], tipo_pago, cliente_id)
-            messagebox.showinfo("Éxito", f"Venta #{venta_id} registrada correctamente.")
+            # Intentar registrar la venta en MongoDB
+            try:
+                venta_id = database.registrar_venta(items, total, itbis_incluido, self.descuento_aplicado, self.current_user['id'], tipo_pago, cliente_id)
+                messagebox.showinfo("Éxito", f"Venta #{venta_id} registrada correctamente.")
+            except database.ConnectionFailure:
+                # Si falla la conexión, guardar localmente
+                messagebox.showwarning("Modo Offline", "No se pudo conectar al servidor. La venta se ha guardado localmente y se sincronizará automáticamente cuando vuelva la conexión.")
+                sale_data = {
+                    "items_venta": items,
+                    "total": total,
+                    "itbis": itbis_incluido,
+                    "descuento": self.descuento_aplicado,
+                    "usuario_id": self.current_user['id'],
+                    "tipo_pago": tipo_pago,
+                    "cliente_id": cliente_id
+                }
+                database.guardar_venta_local(sale_data)
+                venta_id = "LOCAL" # ID temporal para el ticket
             
             imprimir_ticket(venta_id, items, base_imponible, itbis_incluido, self.descuento_aplicado, total, monto_recibido, devuelta)
 
             self.cancelar_venta() # Limpia la pantalla para la siguiente venta
         except Exception as e:
-            messagebox.showerror("Error de Base de Datos", f"No se pudo registrar la venta: {e}")
+            messagebox.showerror("Error Inesperado", f"No se pudo registrar la venta: {e}")
 
     def cancelar_venta(self):
             if self.current_sale_items:

@@ -1,276 +1,399 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuentas por Pagar - Sistema Ferretería</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <div class="container-fluid mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1><i class="bi bi-file-earmark-arrow-down-fill"></i> Cuentas por Pagar</h1>
-            <div>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoiceModal"><i class="bi bi-plus-circle-fill"></i> Agregar Factura</button>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary"><i class="bi bi-arrow-left-circle"></i> Volver al Dashboard</a>
+{% extends "layout.html" %} 
+
+{% block title %}Cuentas por Pagar - Sistema Ferretería{% endblock %}
+
+{% block page_title %}📄 Cuentas por Pagar{% endblock %}
+
+{% block breadcrumb %}Cuentas por Pagar{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" id="add-supplier-main-btn">
+        <i class="bi bi-person-plus"></i> Agregar Proveedor
+    </button>
+    <button class="btn btn-outline-primary" onclick="location.reload()">
+        <i class="bi bi-arrow-clockwise"></i> Refrescar
+    </button>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoiceModal">
+        <i class="bi bi-plus-circle"></i> Agregar Factura
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- KPIs y Tasa de Cambio -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="kpi-card danger">
+                <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+                <div class="kpi-content">
+                    <h3 id="total-debt-dop">RD$ 0.00</h3>
+                    <p class="kpi-label">Deuda Total (DOP)</p>
+                </div>
             </div>
         </div>
-
-        <div class="card shadow-sm">
-            <div class="card-header">
-                <h5>Buscar Facturas</h5>
-            </div>
-            <div class="card-body">
-                <input type="text" id="search-input" class="form-control mb-3" placeholder="Buscar por proveedor, factura o monto...">
-                <button class="btn btn-secondary" id="clear-search-btn">Limpiar Búsqueda</button>
-                <button class="btn btn-primary ms-2" id="export-csv-btn">Exportar CSV</button>
+        <div class="col-md-4">
+            <div class="kpi-card warning">
+                <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+                <div class="kpi-content">
+                    <h3 id="total-debt-usd">US$ 0.00</h3>
+                    <p class="kpi-label">Deuda Total (USD)</p>
+                </div>
             </div>
         </div>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Proveedor</th>
-                                <th>No. Factura</th>
-                                <th>Fecha Emisión</th>
-                                <th>Fecha Vencimiento</th>
-                                <th>Días Restantes</th>
-                                <th>Monto</th>
-                                <th>Moneda</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accounts-payable-body">
-                            <!-- Las filas se insertarán aquí -->
-                        </tbody>
-                    </table>
+        <div class="col-md-4">
+            <div class="kpi-card info">
+                <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
+                <div class="kpi-content">
+                    <h3 id="exchange-rate">Cargando...</h3>
+                    <p class="kpi-label">Tasa Dólar (USD a DOP)</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Agregar Factura -->
-    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="invoiceModalLabel">Agregar Factura por Pagar</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="invoice-form">
-                        <div class="mb-3">
-                            <label for="proveedor" class="form-label">Proveedor</label>
-                            <select class="form-select" id="proveedor" required></select>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="numero_factura" class="form-label">Número de Factura</label>
-                                <input type="text" class="form-control" id="numero_factura" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="monto" class="form-label">Monto</label>
-                                <input type="number" class="form-control" id="monto" step="0.01" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="fecha_emision" class="form-label">Fecha de Emisión</label>
-                                <input type="date" class="form-control" id="fecha_emision" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="fecha_vencimiento" class="form-label">Fecha de Vencimiento</label>
-                                <input type="date" class="form-control" id="fecha_vencimiento" required>
+    <!-- Pestañas de Navegación -->
+    <ul class="nav nav-tabs mb-4" id="accountsPayableTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+                <i class="bi bi-hourglass-split"></i> Facturas Pendientes
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="paid-tab" data-bs-toggle="tab" data-bs-target="#paid" type="button" role="tab" aria-controls="paid" aria-selected="false">
+                <i class="bi bi-check-circle"></i> Historial de Pagos
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de las Pestañas -->
+    <div class="tab-content" id="accountsPayableTabContent">
+        <!-- Pestaña de Pendientes -->
+        <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+            <!-- Panel de búsqueda y filtros -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="search-input" class="form-control" placeholder="Buscar por proveedor, número de factura...">
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="moneda" class="form-label">Moneda</label>
-                            <select class="form-select" id="moneda">
-                                <option>DOP</option>
-                                <option>USD</option>
+                        <div class="col-lg-3">
+                            <select class="form-select" id="status-filter">
+                                <option value="">Filtrar por estado...</option>
+                                <option value="vence_hoy">Vence hoy</option>
+                                <option value="proxima_semana">Próxima semana</option>
+                                <option value="vencidas">Vencidas</option>
+                                <option value="vigentes">Vigentes</option>
                             </select>
                         </div>
-                    </form>
+                        <div class="col-lg-3">
+                            <button class="btn btn-outline-primary w-100" id="export-pdf-btn">
+                                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="save-invoice-btn">Guardar Factura</button>
+            </div>
+
+            <!-- Tabla de cuentas por pagar -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Facturas Pendientes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Proveedor</th>
+                                    <th>No. Factura</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Vencimiento</th>
+                                    <th>Estado</th>
+                                    <th>Monto</th>
+                                    <th>Moneda</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accounts-payable-table-body">
+                                <!-- Las filas se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Pestaña de Pagadas -->
+        <div class="tab-pane fade" id="paid" role="tabpanel" aria-labelledby="paid-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-archive"></i> Historial de Facturas Pagadas</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Proveedor</th>
+                                    <th>No. Factura</th>
+                                    <th>Fecha Pago</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paid-invoices-body">
+                                <!-- Historial se cargará aquí -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
-        let allAccountsPayable = [];
+<!-- Modal para Editar Factura -->
+<div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAccountModalLabel"><i class="bi bi-pencil-square"></i> Editar Factura por Pagar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-account-form">
+                    <input type="hidden" id="edit-factura-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-proveedor" class="form-label">Proveedor</label>
+                            <select class="form-select" id="edit-proveedor" required></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-numero-factura" class="form-label">Número de Factura</label>
+                            <input type="text" class="form-control" id="edit-numero-factura" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-fecha-emision" class="form-label">Fecha de Emisión</label>
+                            <input type="date" class="form-control" id="edit-fecha-emision" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-fecha-vencimiento" class="form-label">Fecha de Vencimiento</label>
+                            <input type="date" class="form-control" id="edit-fecha-vencimiento" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-monto" class="form-label">Monto</label>
+                            <div class="input-group">
+                                <span class="input-group-text">RD$</span>
+                                <input type="number" class="form-control" id="edit-monto" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="moneda" class="form-label">Moneda</label>
+                            <select class="form-select" id="edit-moneda">
+                                <option value="DOP">DOP</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="save-edit-account-btn">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
-        }
+{% endblock %}
 
-        async function fetchAccountsPayable() {
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let allAccountsPayable = [];
+    const editModal = new bootstrap.Modal(document.getElementById('editAccountModal'));
+    const currencyFormatter = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' });
+
+    async function fetchAccountsPayable() {
+        try {
             const response = await fetch('/api/accounts_payable');
+            if (!response.ok) throw new Error('Network response was not ok');
             allAccountsPayable = await response.json();
-            renderAccountsPayable(allAccountsPayable);
+            renderPage(allAccountsPayable);
+        } catch (error) {
+            console.error('Error fetching accounts payable:', error);
         }
+    }
 
-        function renderAccountsPayable(data) {
-            const tableBody = document.getElementById('accounts-payable-body');
-            tableBody.innerHTML = '';
-
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0); // Resetear tiempo para comparación precisa
-
-            data.forEach(cuenta => {
-                const fechaVencimiento = new Date(cuenta.fecha_vencimiento);
-                fechaVencimiento.setHours(0, 0, 0, 0);
-
-                // Calcular días restantes
-                const tiempoRestante = fechaVencimiento - hoy;
-                const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
-
-                // Determinar clase CSS y color basado en días restantes
-                let diasClass = '';
-                let diasText = '';
-
-                if (diasRestantes < 0) {
-                    diasClass = 'text-danger fw-bold bg-danger-subtle';
-                    diasText = `VENCIDA (${Math.abs(diasRestantes)} días)`;
-                } else if (diasRestantes === 0) {
-                    diasClass = 'text-danger fw-bold bg-danger-subtle';
-                    diasText = 'VENCE HOY';
-                } else if (diasRestantes <= 3) {
-                    diasClass = 'text-warning fw-bold bg-warning-subtle';
-                    diasText = `${diasRestantes} días`;
-                } else if (diasRestantes <= 7) {
-                    diasClass = 'text-primary fw-bold';
-                    diasText = `${diasRestantes} días`;
-                } else {
-                    diasClass = 'text-success fw-bold';
-                    diasText = `${diasRestantes} días`;
-                }
-
-                const row = document.createElement('tr');
-                // Agregar clase a la fila entera si está vencida
-                if (diasRestantes < 0) {
-                    row.className = 'table-danger';
-                }
-
-                row.innerHTML = `
-                    <td>${cuenta.proveedor}</td>
-                    <td>${cuenta.numero_factura}</td>
-                    <td>${new Date(cuenta.fecha_emision).toLocaleDateString('es-DO')}</td>
-                    <td>${new Date(cuenta.fecha_vencimiento).toLocaleDateString('es-DO')}</td>
-                    <td class="${diasClass}">${diasText}</td>
-                    <td>${cuenta.monto.toFixed(2)}</td>
-                    <td>${cuenta.moneda}</td>
-                    <td>
-                        <button class="btn btn-sm btn-success" onclick="markAsPaid('${cuenta._id}')">Marcar como Pagada</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
+    async function fetchExchangeRate() {
+        try {
+            const response = await fetch('https://open.er-api.com/v6/latest/USD');
+            if (!response.ok) throw new Error('API de tasa de cambio no disponible');
+            const data = await response.json();
+            const rate = data.rates.DOP;
+            document.getElementById('exchange-rate').textContent = currencyFormatter.format(rate);
+        } catch (error) {
+            console.error('Error fetching exchange rate:', error);
+            document.getElementById('exchange-rate').textContent = 'Error';
         }
+    }
 
-        // Búsqueda
-        document.getElementById('search-input').addEventListener('keyup', (e) => {
-            const term = e.target.value.toLowerCase();
-            if (!term) {
-                renderAccountsPayable(allAccountsPayable);
-                return;
-            }
-            const filtered = allAccountsPayable.filter(c =>
-                c.proveedor.toLowerCase().includes(term) ||
-                c.numero_factura.toLowerCase().includes(term) ||
-                c.monto.toString().includes(term)
-            );
-            renderAccountsPayable(filtered);
-        });
+    function renderPage(data) {
+        const tableBody = document.getElementById('accounts-payable-table-body');
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
 
-        // Limpiar búsqueda
-        document.getElementById('clear-search-btn').addEventListener('click', () => {
-            document.getElementById('search-input').value = '';
-            renderAccountsPayable(allAccountsPayable);
-        });
+        let totalDOP = 0;
+        let totalUSD = 0;
 
-        // Exportar CSV
-        document.getElementById('export-csv-btn').addEventListener('click', () => {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Proveedor,No Factura,Fecha Emision,Fecha Vencimiento,Monto,Moneda\n";
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
 
-            allAccountsPayable.forEach(c => {
-                const fechaEmision = new Date(c.fecha_emision).toLocaleDateString();
-                const fechaVencimiento = new Date(c.fecha_vencimiento).toLocaleDateString();
-                csvContent += `${c.proveedor},${c.numero_factura},${fechaEmision},${fechaVencimiento},${c.monto},${c.moneda}\n`;
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "cuentas_por_pagar.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-
-        async function markAsPaid(facturaId) {
-            if (confirm('¿Está seguro de que desea marcar esta factura como pagada?')) {
-                await fetch(`/api/accounts_payable/pay/${facturaId}`, { method: 'POST' });
-                fetchAccountsPayable();
-            }
-        }
-
-        async function loadSuppliers() {
-            const response = await fetch('/api/suppliers');
-            const suppliers = await response.json();
-            const select = document.getElementById('proveedor');
-            select.innerHTML = '<option selected disabled value="">Seleccione un proveedor...</option>';
-            suppliers.forEach(s => {
-                const option = document.createElement('option');
-                option.value = s._id;
-                option.textContent = s.nombre;
-                select.appendChild(option);
-            });
-        }
-
-        document.getElementById('save-invoice-btn').addEventListener('click', async () => {
-            const data = {
-                proveedor_id: document.getElementById('proveedor').value,
-                numero_factura: document.getElementById('numero_factura').value,
-                fecha_emision: document.getElementById('fecha_emision').value,
-                fecha_vencimiento: document.getElementById('fecha_vencimiento').value,
-                monto: document.getElementById('monto').value,
-                moneda: document.getElementById('moneda').value,
-            };
-
-            if (!data.proveedor_id || !data.numero_factura || !data.monto) {
-                alert('Proveedor, Número de Factura y Monto son obligatorios.');
-                return;
+        data.forEach(cuenta => {
+            // Sumar a los totales
+            if (cuenta.moneda === 'DOP') {
+                totalDOP += cuenta.monto;
+            } else if (cuenta.moneda === 'USD') {
+                totalUSD += cuenta.monto;
             }
 
-            const response = await fetch('/api/accounts_payable/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+            const fechaVencimiento = new Date(cuenta.fecha_vencimiento);
+            fechaVencimiento.setHours(0, 0, 0, 0);
+
+            const tiempoRestante = fechaVencimiento - hoy;
+            const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+
+            let estadoClass, estadoText;
+
+            if (diasRestantes < 0) {
+                estadoClass = 'badge bg-danger';
+                estadoText = `Vencida (${Math.abs(diasRestantes)} días)`;
+            } else if (diasRestantes === 0) {
+                estadoClass = 'badge bg-warning text-dark';
+                estadoText = 'Vence Hoy';
+            } else {
+                estadoClass = 'badge bg-success';
+                estadoText = `Vigente (${diasRestantes} días)`;
+            }
+
+            const row = document.createElement('tr');
+            if (diasRestantes < 0) row.classList.add('table-danger');
+
+            row.innerHTML = `
+                <td>${cuenta.proveedor}</td>
+                <td>${cuenta.numero_factura}</td>
+                <td>${new Date(cuenta.fecha_emision).toLocaleDateString('es-DO')}</td>
+                <td>${new Date(cuenta.fecha_vencimiento).toLocaleDateString('es-DO')}</td>
+                <td><span class="${estadoClass}">${estadoText}</span></td>
+                <td>${(cuenta.moneda === 'USD' ? 'US$ ' : 'RD$ ') + cuenta.monto.toFixed(2)}</td>
+                <td>${cuenta.moneda}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${cuenta._id}" title="Editar">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-success btn-pay" data-id="${cuenta._id}" title="Marcar como Pagada">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Actualizar KPIs
+        document.getElementById('total-debt-dop').textContent = currencyFormatter.format(totalDOP);
+        document.getElementById('total-debt-usd').textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalUSD);
+    }
+
+    async function markAsPaid(facturaId) {
+        if (!confirm('¿Está seguro de que desea marcar esta factura como pagada?')) return;
+
+        try {
+            const response = await fetch(`/api/accounts_payable/pay/${facturaId}`, { method: 'POST' });
             const result = await response.json();
-            alert(result.message || result.error);
             if (result.success) {
-                invoiceModal.hide();
-                document.getElementById('invoice-form').reset();
-                fetchAccountsPayable();
+                fetchAccountsPayable(); // Recargar la tabla
+            } else {
+                alert('Error al marcar como pagada: ' + result.error);
             }
-        });
+        } catch (error) {
+            console.error('Error de red:', error);
+        }
+    }
 
-        fetchAccountsPayable();
-        loadSuppliers();
-    </script>
-</body>
-</html>
+    // Delegación de eventos para la tabla
+    document.getElementById('accounts-payable-table-body').addEventListener('click', function (e) {
+        const editBtn = e.target.closest('.btn-edit');
+        const payBtn = e.target.closest('.btn-pay');
+
+        if (editBtn) {
+            const facturaId = editBtn.dataset.id;
+            const cuenta = allAccountsPayable.find(c => c._id === facturaId);
+            if (cuenta) {
+                // Llenar y mostrar el modal de edición (lógica completa necesaria aquí)
+                console.log('Editando:', cuenta);
+                editModal.show();
+            }
+        }
+
+        if (payBtn) {
+            const facturaId = payBtn.dataset.id;
+            markAsPaid(facturaId);
+        }
+    });
+
+    // Filtros y búsqueda
+    document.getElementById('search-input').addEventListener('keyup', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = allAccountsPayable.filter(c =>
+            c.proveedor.toLowerCase().includes(term) ||
+            c.numero_factura.toLowerCase().includes(term)
+        );
+        renderPage(filtered);
+    });
+
+    // Carga inicial
+    fetchAccountsPayable();
+    fetchExchangeRate();
+
+    // Cargar facturas pagadas al mostrar la pestaña de historial
+    async function fetchPaidInvoices() {
+        try {
+            const resp = await fetch('/api/accounts_payable/paid');
+            if (!resp.ok) throw new Error('No se pudo obtener facturas pagadas');
+            const paid = await resp.json();
+            renderPaidInvoices(paid);
+        } catch (err) {
+            console.error('Error cargando facturas pagadas:', err);
+        }
+    }
+
+    function renderPaidInvoices(data) {
+        const tbody = document.getElementById('paid-invoices-body');
+        tbody.innerHTML = '';
+        data.forEach(f => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${f.proveedor}</td>
+                <td>${f.numero_factura}</td>
+                <td>${f.fecha_pago ? new Date(f.fecha_pago).toLocaleDateString('es-DO') : ''}</td>
+                <td>${(f.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (f.monto || 0).toFixed(2)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Actualizar historial al cambiar a la pestaña "Pagadas"
+    document.getElementById('paid-tab').addEventListener('shown.bs.tab', function () {
+        fetchPaidInvoices();
+    });
+
+});
+</script>
+{% endblock %}

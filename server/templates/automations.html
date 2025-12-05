@@ -1,0 +1,204 @@
+{% extends "layout.html" %}
+
+{% block title %}Automatizaciones - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-robot"></i> Automatizaciones y Sugerencias{% endblock %}
+
+{% block breadcrumb %}Automatizaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Pestañas de Navegación -->
+    <ul class="nav nav-tabs mb-4" id="automationsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="reorder-tab" data-bs-toggle="tab" data-bs-target="#reorder" type="button" role="tab" aria-controls="reorder" aria-selected="true">
+                <i class="bi bi-box-arrow-in-down"></i> Sugerencias de Reordenamiento
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="prices-tab" data-bs-toggle="tab" data-bs-target="#prices" type="button" role="tab" aria-controls="prices" aria-selected="false" disabled>
+                <i class="bi bi-tags-fill"></i> Actualización de Precios (Próximamente)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de las Pestañas -->
+    <div class="tab-content" id="automationsTabContent">
+        <!-- Pestaña de Sugerencias de Reordenamiento -->
+        <div class="tab-pane fade show active" id="reorder" role="tabpanel" aria-labelledby="reorder-tab">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Productos que necesitan reabastecimiento</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-suggestions-btn">
+                        <i class="bi bi-arrow-clockwise"></i> Recalcular
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Departamento</th>
+                                    <th>Stock Actual</th>
+                                    <th>Stock Mínimo</th>
+                                    <th>Cantidad Sugerida</th>
+                                    <th>Urgencia</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suggestions-table-body">
+                                <!-- Las sugerencias se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="empty-state" class="text-center p-5" style="display: none;">
+                        <i class="bi bi-emoji-sunglasses text-success" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3">¡Todo en orden!</h5>
+                        <p class="text-muted">No hay sugerencias de reordenamiento por el momento.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast para notificaciones -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="toast-element" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+        <div class="toast-body" id="toast-message"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tableBody = document.getElementById('suggestions-table-body');
+        const emptyState = document.getElementById('empty-state');
+        const toastElement = document.getElementById('toast-element');
+        const toastMessage = document.getElementById('toast-message');
+        const bsToast = new bootstrap.Toast(toastElement);
+        let allSuggestions = [];
+
+        function showToast(message, isError = false) {
+            toastMessage.textContent = message;
+            toastElement.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+            bsToast.show();
+        }
+
+        async function fetchSuggestions() {
+            try {
+                const response = await fetch('/api/automations/reorder_suggestions');
+                const result = await response.json();
+
+                if (result.success) {
+                    allSuggestions = result.suggestions;
+                    renderSuggestions(allSuggestions);
+                } else {
+                    showToast('Error al cargar sugerencias: ' + result.error, true);
+                }
+            } catch (error) {
+                showToast('Error de red al cargar sugerencias.', true);
+            }
+        }
+
+        function renderSuggestions(suggestions) {
+            tableBody.innerHTML = '';
+            if (suggestions.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+
+            const urgencyMap = {
+                critical: { text: 'Crítica', class: 'danger' },
+                high: { text: 'Alta', class: 'warning' },
+                medium: { text: 'Media', class: 'info' },
+                low: { text: 'Baja', class: 'secondary' }
+            };
+
+            suggestions.forEach(sug => {
+                const urgencyInfo = urgencyMap[sug.urgency] || urgencyMap.low;
+                const row = `
+                    <tr>
+                        <td>${sug.product_name}</td>
+                        <td><span class="badge bg-secondary">${sug.department || 'N/A'}</span></td>
+                        <td class="text-center text-danger fw-bold">${sug.current_stock}</td>
+                        <td class="text-center">${sug.min_stock}</td>
+                        <td class="text-center text-success fw-bold">${sug.suggested_quantity}</td>
+                        <td>
+                            <span class="badge bg-${urgencyInfo.class}">${urgencyInfo.text}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary create-po-btn" 
+                                    data-product-id="${sug.product_id}" 
+                                    data-supplier="${sug.proveedor_sugerido}"
+                                    title="Crear orden de compra para ${sug.proveedor_sugerido}">
+                                <i class="bi bi-cart-plus"></i> Crear Pedido
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        async function generatePurchaseOrder(supplierName) {
+            const productsForSupplier = allSuggestions.filter(s => s.proveedor_sugerido === supplierName);
+
+            if (productsForSupplier.length === 0) {
+                showToast('No hay productos para este proveedor en las sugerencias.', true);
+                return;
+            }
+
+            showToast(`Generando orden para ${supplierName} con ${productsForSupplier.length} productos...`);
+            showLoader(true);
+
+            try {
+                const response = await fetch('/api/automations/generate_po_pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        products: productsForSupplier,
+                        supplier_name: supplierName
+                    })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `Orden_Compra_${supplierName.replace(/ /g, '_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    showToast('Error al generar el PDF.', true);
+                }
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        document.getElementById('refresh-suggestions-btn').addEventListener('click', fetchSuggestions);
+
+        // Carga inicial
+        fetchSuggestions();
+
+        // Delegación de eventos para los botones "Crear Pedido"
+        tableBody.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.create-po-btn')) {
+                const button = e.target.closest('.create-po-btn');
+                const supplier = button.dataset.supplier;
+                generatePurchaseOrder(supplier);
+            }
+        });
+    });
+</script>
+{% endblock %}

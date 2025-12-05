@@ -1,59 +1,192 @@
 import sys
 from pathlib import Path
 from datetime import datetime
+import threading
 
 # Añadir el directorio raíz del proyecto al sys.path
 ROOT_PATH = Path(__file__).parent.parent # Subimos un nivel para apuntar a la carpeta 'Sistema'
 sys.path.append(str(ROOT_PATH))
 
 from flask import Flask, jsonify, render_template, request, send_file
+from flask import session, redirect, url_for, flash
+from bson import ObjectId
 from database.database import *
+from gui.security import check_password # Importamos la función para verificar contraseñas
+from functools import wraps # Para crear el decorador de login
 import csv
 from io import StringIO
 from fpdf import FPDF
 import io
 import re
 from urllib.parse import quote
+import base64
+import unicodedata
+
+# Conectar a la base de datos INMEDIATAMENTE después del import para que las colecciones se inicialicen
+conectar_db()
+print("✅ Inicialización de base de datos completada en server.py")
+from PIL import Image
+import numpy as np
 
 # Inicializar la aplicación Flask
 app = Flask(__name__, template_folder=str(Path(__file__).parent / 'templates'), static_folder=str(Path(__file__).parent / 'static'))
+app.secret_key = 'una-clave-secreta-muy-segura-y-dificil-de-adivinar' # Necesario para usar sesiones
+
+# Import opcional de opencv (cv2)
+try:
+    import cv2
+    OPENCV_AVAILABLE = True
+    print("OpenCV disponible: funcionalidad avanzada de imágenes activa.")
+except ImportError:
+    cv2 = None
+    OPENCV_AVAILABLE = False
+    print("Advertencia: OpenCV no está disponible. Funcionalidad de procesamiento avanzado de imágenes limitada.")
+
+# Import opcional de pyzbar
+try:
+    from pyzbar.pyzbar import decode as pyzbar_decode
+    PYZBAR_AVAILABLE = True
+    print("Pyzbar disponible: escaneo de imágenes desde servidor activo.")
+except ImportError:
+    pyzbar_decode = None
+    PYZBAR_AVAILABLE = False
+    print("Advertencia: Pyzbar no está disponible. El escaneo de imágenes desde el servidor no funcionará.")
+
+# Import opcional de pytesseract
+try:
+    import pytesseract
+    # Si usas Windows, podrías necesitar especificar la ruta al ejecutable de Tesseract
+    # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    PYTESSERACT_AVAILABLE = True
+    print("Pytesseract disponible: escaneo de facturas activo.")
+except ImportError:
+    pytesseract = None
+    PYTESSERACT_AVAILABLE = False
+    print("❌ Advertencia: Pytesseract no está disponible. El escaneo de facturas (OCR) no funcionará. Para activarlo, instale Tesseract-OCR en el sistema y luego ejecute 'pip install pytesseract'.")
+
+# --- Decorador para requerir inicio de sesión ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Por favor, inicie sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Rutas de Authentication ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Página de inicio de sesión."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if not username or not password:
+            flash('Usuario y contraseña son requeridos.', 'danger')
+            return redirect(url_for('login'))
+
+        # Buscar usuario en la base de datos
+        user = obtener_usuario_por_nombre(username)
+
+        if user and check_password(user['hash_contrasena'], password):
+            # Guardar información del usuario en la sesión
+            session['user_id'] = str(user['_id'])
+            session['username'] = user['nombre_usuario']
+            session['role'] = user.get('rol', 'Usuario')
+            flash(f'Bienvenido, {username}!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Usuario o contraseña incorrectos.', 'danger')
+            return redirect(url_for('login'))
+
+    # Si ya está logueado, redirigir al dashboard
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Sesión cerrada exitosamente.', 'info')
+    return redirect(url_for('login'))
 
 # --- Rutas de la Interfaz Web (Frontend) ---
 
 @app.route('/')
+@login_required
 def dashboard():
     """Muestra el panel de control principal."""
     return render_template('dashboard.html')
 
+@login_required
 @app.route('/scanner')
 def scanner_page():
     """Muestra la página del escáner de códigos de barras."""
     return render_template('scanner.html')
 
+@login_required
 @app.route('/quotations')
 def quotations_page():
     """Muestra la página para crear cotizaciones."""
     return render_template('quotation.html')
 
+@login_required
 @app.route('/pos')
 def pos_page():
     """Muestra la página del Punto de Venta web."""
     return render_template('pos.html')
 
+@login_required
 @app.route('/inventory')
 def inventory_page():
     """Muestra la página de gestión de inventario web."""
     return render_template('inventory.html')
 
+@login_required
 @app.route('/accounts_payable')
 def accounts_payable_page():
     """Muestra la página de Cuentas por Pagar."""
     return render_template('accounts_payable.html')
 
+@login_required
 @app.route('/accounts_receivable')
 def accounts_receivable_page():
     """Muestra la página de Cuentas por Cobrar."""
+    print(f"Acceso a Cuentas por Cobrar por usuario: {session.get('user_id')}")
     return render_template('accounts_receivable.html')
+
+@login_required
+@app.route('/sales_reports')
+def sales_reports_page():
+    """Muestra la página de reportes de ventas."""
+    return render_template('sales_reports.html')
+
+@login_required
+@app.route('/sales')
+def sales_page():
+    """Muestra la página de ventas POS."""
+    return render_template('sales.html')
+
+@login_required
+@app.route('/clients')
+def clients_page():
+    """Muestra la página de gestión de clientes."""
+    return render_template('clients.html')
+
+@app.route('/automations')
+@login_required
+def automations_page():
+    """Muestra la página de Automatizaciones y Sugerencias."""
+    return render_template('automations.html')
+
+@app.route('/cash_closing')
+@login_required
+def cash_closing_page():
+    """Muestra la página de Cierre de Caja."""
+    return render_template('cash_closing.html')
 
 # --- Rutas de la API (Backend para el Frontend) ---
 
@@ -67,7 +200,10 @@ def get_products():
 def get_stats():
     """Devuelve estadísticas clave del negocio."""
     stats = obtener_estadisticas()
-    return jsonify(stats)
+    if stats:
+        return jsonify({"success": True, "stats": stats})
+    else:
+        return jsonify({"success": False, "error": "No se pudieron obtener las estadísticas."}), 500
 
 @app.route('/api/product/update/<product_id>', methods=['POST'])
 def update_product(product_id):
@@ -130,6 +266,106 @@ def delete_product(product_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/products/bulk_update_department', methods=['POST'])
+@login_required
+def bulk_update_department():
+    """Actualiza el departamento para una lista de IDs de productos."""
+    data = request.get_json()
+    product_ids = data.get('ids', [])
+    new_department = data.get('department')
+
+    if not product_ids or not new_department:
+        return jsonify({"success": False, "error": "Se requieren IDs de producto y un departamento."}), 400
+
+    try:
+        # La función en database.py se encargará de la lógica
+        updated_count = actualizar_departamento_masivo(product_ids, new_department)
+        return jsonify({"success": True, "updated_count": updated_count})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/inventory/clean_duplicates', methods=['POST'])
+@login_required
+def clean_inventory_duplicates():
+    """
+    Busca y elimina productos con códigos de barras duplicados, conservando uno.
+    """
+    if session.get('role') != 'Administrador':
+        return jsonify({"success": False, "error": "No tienes permisos para realizar esta acción."}), 403
+
+    try:
+        todos_los_productos = obtener_productos()
+        
+        codigos_vistos = {}  # { 'codigo_barras': producto_a_conservar }
+        duplicados_a_eliminar = []  # Lista de IDs a eliminar
+
+        for producto in todos_los_productos:
+            codigo = producto.get('codigo_barras')
+            if not codigo or not codigo.strip():
+                continue
+
+            if codigo in codigos_vistos:
+                producto_existente = codigos_vistos[codigo]
+                # Criterio: Conservar el que tenga más stock. Si es igual, el más reciente (mayor ID).
+                if producto.get('stock', 0) > producto_existente.get('stock', 0):
+                    duplicados_a_eliminar.append(producto_existente['id'])
+                    codigos_vistos[codigo] = producto
+                else:
+                    duplicados_a_eliminar.append(producto['id'])
+            else:
+                codigos_vistos[codigo] = producto
+
+        for prod_id in duplicados_a_eliminar:
+            eliminar_producto(prod_id)
+
+        return jsonify({"success": True, "deleted_count": len(duplicados_a_eliminar)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/suppliers/add', methods=['POST'])
+def add_supplier():
+    """Agrega un nuevo proveedor."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "No se recibieron datos"}), 400
+
+    try:
+        nombre = data.get('nombre')
+        rnc = data.get('rnc')
+        telefono = data.get('telefono')
+
+        if not nombre:
+            return jsonify({"success": False, "error": "El nombre del proveedor es obligatorio"}), 400
+
+        # Para evitar duplicados, verificar si ya existe
+        existing_supplier = None
+        try:
+            existing_supplier = obtener_proveedor_por_nombre(nombre)
+        except:
+            pass
+
+        if existing_supplier:
+            return jsonify({"success": False, "error": "Ya existe un proveedor con este nombre"}), 400
+
+        # Agregar el proveedor
+        agregar_proveedor(nombre, rnc, telefono)
+
+        # Obtener el ID del proveedor recién agregado
+        # Como MongoDB asigna ObjectId automáticamente, necesitamos buscarlo
+        supplier = obtener_proveedor_por_nombre(nombre)
+        if supplier:
+            supplier_id = str(supplier['_id'])
+            return jsonify({
+                "success": True,
+                "message": f"Proveedor '{nombre}' agregado exitosamente",
+                "supplier_id": supplier_id
+            })
+        else:
+            return jsonify({"success": False, "error": "Error al obtener el proveedor recién creado"}), 500
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/suppliers')
 def get_suppliers():
     """Devuelve la lista de todos los proveedores."""
@@ -155,8 +391,35 @@ def add_account_payable():
 @app.route('/api/accounts_payable')
 def get_accounts_payable():
     """Devuelve la lista de cuentas por pagar pendientes."""
-    cuentas = obtener_cuentas_por_pagar()
-    return jsonify(cuentas)
+    try:
+        cuentas = obtener_cuentas_por_pagar()
+        return jsonify(cuentas)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/accounts_payable/paid')
+def get_accounts_payable_paid():
+    """Devuelve facturas pagadas en los últimos 90 días por defecto."""
+    try:
+        hoy = datetime.now()
+        inicio = hoy - timedelta(days=90)
+        facturas = obtener_facturas_pagadas(inicio, hoy)
+        return jsonify(facturas)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/accounts_payable/update/<factura_id>', methods=['POST'])
+@login_required
+def update_account_payable(factura_id):
+    """Actualiza una cuenta por pagar existente."""
+    data = request.get_json()
+    try:
+        # Reutilizamos la función de la base de datos para actualizar
+        actualizar_factura_compra(factura_id, data['proveedor_id'], data['numero_factura'], data['fecha_emision'], data['fecha_vencimiento'], float(data['monto']), data['moneda'])
+        return jsonify({"success": True, "message": "Factura actualizada correctamente."})
+    except Exception as e:
+        print(f"Error actualizando factura: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/accounts_payable/pay/<factura_id>', methods=['POST'])
 def pay_account_payable(factura_id):
@@ -167,6 +430,16 @@ def pay_account_payable(factura_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/accounts_payable/delete/<factura_id>', methods=['POST'])
+@login_required
+def delete_account_payable(factura_id):
+    """Elimina una cuenta por pagar."""
+    try:
+        eliminar_factura_compra(factura_id)
+        return jsonify({"success": True, "message": "Factura eliminada correctamente."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/sales_chart_data')
 def get_sales_chart_data():
     """Devuelve los datos de ventas para el gráfico del dashboard."""
@@ -174,6 +447,43 @@ def get_sales_chart_data():
     # Convertir a un formato más amigable para JavaScript
     datos_procesados = [{"dia": fila[0], "total": fila[1]} for fila in datos_brutos]
     return jsonify(datos_procesados)
+
+@app.route('/api/sales_by_department')
+@login_required
+def get_sales_by_department():
+    """Devuelve el total de ventas agrupado por departamento."""
+    try:
+        pipeline = [
+            # Unir ventas_detalle con productos para obtener el departamento
+            {
+                "$lookup": {
+                    "from": "productos",
+                    "localField": "producto_id",
+                    "foreignField": "_id",
+                    "as": "producto_info"
+                }
+            },
+            {"$unwind": "$producto_info"},
+            # Agrupar por departamento y sumar el subtotal de cada item
+            {
+                "$group": {
+                    "_id": "$producto_info.departamento",
+                    "total_vendido": {"$sum": {"$multiply": ["$cantidad", "$precio_unitario"]}}
+                }
+            },
+            # Proyectar para renombrar el campo _id
+            {
+                "$project": {
+                    "_id": 0,
+                    "departamento": "$_id",
+                    "total": "$total_vendido"
+                }
+            }
+        ]
+        datos = list(ventas_detalle_collection.aggregate(pipeline))
+        return jsonify({"success": True, "data": datos})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/scan_product', methods=['POST'])
 def api_scan_product():
@@ -192,6 +502,128 @@ def api_scan_product():
         return jsonify({"success": True, "product": producto})
     else:
         return jsonify({"success": False, "error": "Producto no encontrado."}), 404
+
+@app.route('/api/scan_image', methods=['POST'])
+def api_scan_image():
+    """
+    Recibe una imagen, la procesa con OpenCV y Pyzbar para encontrar un código de barras,
+    y devuelve la información del producto si lo encuentra.
+    """
+    if not OPENCV_AVAILABLE or not PYZBAR_AVAILABLE:
+        return jsonify({"success": False, "error": "El servidor no tiene instaladas las librerías para procesar imágenes (OpenCV/Pyzbar)."}), 500
+
+    if 'image' not in request.files:
+        return jsonify({"success": False, "error": "No se recibió ninguna imagen."}), 400
+
+    file = request.files['image']
+    try:
+        # Leer la imagen en un formato que OpenCV pueda manejar
+        in_memory_file = io.BytesIO()
+        file.save(in_memory_file)
+        image_data = np.frombuffer(in_memory_file.getvalue(), dtype=np.uint8)
+        image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
+
+        if image is None:
+            return jsonify({"success": False, "error": "No se pudo decodificar la imagen."}), 400
+
+        # Decodificar códigos de barras en la imagen
+        barcodes = pyzbar_decode(image)
+
+        if not barcodes:
+            return jsonify({"success": False, "error": "No se detectaron códigos de barras."}), 404
+
+        # Usar el primer código de barras encontrado
+        barcode_data = barcodes[0].data.decode('utf-8')
+
+        # Buscar el producto en la base de datos
+        producto = buscar_producto_por_codigo(barcode_data)
+
+        if producto:
+            return jsonify({"success": True, "product": producto, "barcode": barcode_data})
+        else:
+            return jsonify({"success": False, "error": f"Producto no encontrado para el código '{barcode_data}'.", "barcode": barcode_data}), 404
+
+    except Exception as e:
+        print(f"Error procesando imagen en el servidor: {str(e)}")
+        return jsonify({"success": False, "error": f"Error interno del servidor al procesar la imagen: {e}"}), 500
+
+@app.route('/api/scan_invoice_image', methods=['POST'])
+@login_required
+def api_scan_invoice_image():
+    """
+    Recibe la imagen de una factura, extrae texto con OCR y intenta parsear
+    los productos y precios.
+    """
+    if not PYTESSERACT_AVAILABLE:
+        return jsonify({"success": False, "error": "El servidor no tiene Pytesseract instalado para leer facturas."}), 500
+
+    if 'invoice_image' not in request.files:
+        return jsonify({"success": False, "error": "No se recibió ninguna imagen."}), 400
+
+    file = request.files['invoice_image']
+    try:
+        # Leer la imagen
+        image = Image.open(file.stream)
+
+        # Extraer texto usando Tesseract
+        text = pytesseract.image_to_string(image, lang='spa') # 'spa' para español
+
+        # Lógica de parsing simple para encontrar productos y precios
+        items = []
+        # Regex para encontrar líneas con un precio al final (ej: 1,234.56 o 1234.56)
+        price_pattern = re.compile(r'([\d,]+\.\d{2})$')
+
+        for line in text.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+
+            match = price_pattern.search(line)
+            if match:
+                try:
+                    price_str = match.group(1).replace(',', '')
+                    price = float(price_str)
+                    
+                    # El resto de la línea es el nombre del producto (simplificación)
+                    name_part = line[:match.start()].strip()
+                    
+                    # Intentar extraer la cantidad del inicio de la línea
+                    quantity = 1
+                    quantity_match = re.match(r'^(\d+[\.,]?\d*)\s+', name_part)
+                    if quantity_match:
+                        try:
+                            quantity_str = quantity_match.group(1).replace(',', '.')
+                            quantity = float(quantity_str)
+                            # El nombre es lo que queda después de la cantidad
+                            name = name_part[quantity_match.end():].strip()
+                        except ValueError:
+                            name = name_part # Si falla, usar la parte completa como nombre
+
+                    if len(name) > 2: # Evitar líneas que solo son precios
+                        items.append({"nombre": name, "costo": price, "cantidad": quantity})
+                except (ValueError, IndexError):
+                    continue
+        
+        return jsonify({"success": True, "items": items})
+
+    except Exception as e:
+        print(f"Error procesando imagen de factura: {str(e)}")
+        return jsonify({"success": False, "error": f"Error interno del servidor: {e}"}), 500
+
+@app.route('/api/products/bulk_add', methods=['POST'])
+@login_required
+def api_bulk_add_products():
+    """Agrega múltiples productos nuevos a la base de datos."""
+    data = request.get_json()
+    products = data.get('products', [])
+    if not products:
+        return jsonify({"success": False, "error": "No se recibieron productos."}), 400
+    
+    try:
+        count = agregar_productos_en_masa(products)
+        return jsonify({"success": True, "message": f"Se agregaron {count} productos nuevos al inventario."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/add_scanned_stock', methods=['POST'])
 def api_add_scanned_stock():
@@ -285,7 +717,7 @@ def export_products_csv():
 
         output.seek(0)
         return send_file(
-            io.BytesIO(output.getvalue().encode('utf-8')),
+            io.BytesIO(output.getvalue().encode('utf-8-sig')), # Usar utf-8-sig para compatibilidad con Excel
             mimetype='text/csv',
             as_attachment=True,
             download_name='inventario.csv'
@@ -318,22 +750,25 @@ def import_products_csv():
 
         for row in reader:
             try:
-                # Asumir orden: codigo, nombre, departamento, precio, stock
-                if len(row) < 5:
+                # Asumir orden: codigo, nombre, costo, precio, stock, stock_minimo, departamento
+                if len(row) < 7:
                     fallidos += 1
                     continue
 
                 codigo = row[0]
                 nombre = row[1]
-                departamento = row[2]
-                precio = float(row[3]) if row[3] else 0
+                costo = float(row[2]) if row[2] else 0.0
+                precio = float(row[3]) if row[3] else 0.0
                 stock = int(float(row[4])) if row[4] else 0
+                stock_minimo = int(float(row[5])) if row[5] else 0
+                departamento = row[6] if row[6] else 'Ferretería'
 
-                # Agregar producto (sin costo para simplicidad)
-                agregar_producto(codigo, nombre, precio, precio, stock, 0, departamento)
+                # Agregar producto completo
+                agregar_producto(codigo, nombre, costo, precio, stock, stock_minimo, departamento)
                 exitosos += 1
 
-            except Exception:
+            except Exception as e:
+                print(f"Error procesando fila: {row[:7]}, Error: {e}")
                 fallidos += 1
 
         return jsonify({"success": True, "message": f"Importados: {exitosos}, Fallidos: {fallidos}"})
@@ -346,29 +781,56 @@ def export_products_pdf():
     """Exporta el reporte de inventario a PDF."""
     try:
         productos = obtener_productos()
-        pdf = FPDF()
+        
+        class PDF(FPDF):
+            def header(self):
+                logo_path = Path(__file__).parent.parent / "assets" / "logo.png"
+                if logo_path.exists():
+                    self.image(str(logo_path), 10, 8, 33)
+                self.set_font('Arial', 'B', 15)
+                self.cell(80)
+                self.cell(30, 10, 'Reporte de Inventario', 0, 0, 'C')
+                self.ln(5)
+                self.set_font('Arial', '', 10)
+                self.cell(80)
+                self.cell(30, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y')}", 0, 0, 'C')
+                self.ln(20)
+
+            def footer(self):
+                self.set_y(-15)
+                self.set_font('Arial', 'I', 8)
+                self.cell(0, 10, 'Pagina ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
+
+        pdf = PDF()
+        pdf.alias_nb_pages()
         pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Reporte de Inventario", 0, 1, "C")
-        pdf.ln(10)
+        pdf.set_font("Arial", "B", 9)
 
-        pdf.set_font("Arial", "B", 10)
-        headers = ["ID", "Codigo", "Nombre", "Precio", "Stock"]
-        col_widths = [20, 30, 70, 25, 20]
-
+        # Cabeceras de la tabla
+        headers = ["Codigo", "Nombre", "Costo", "Precio", "Stock", "Departamento"]
+        col_widths = [30, 75, 20, 20, 15, 30]
+        
         for i, header in enumerate(headers):
             pdf.cell(col_widths[i], 10, header, 1, 0, "C")
         pdf.ln()
 
-        pdf.set_font("Arial", "", 8)
+        pdf.set_font("Arial", "", 9)
         for prod in productos:
-            if pdf.get_y() > 260:  # Nueva página si se acerca al final
+            if pdf.get_y() > 270:
                 pdf.add_page()
-            pdf.cell(col_widths[0], 8, str(prod.get('id', '')), 1, 0)
-            pdf.cell(col_widths[1], 8, str(prod.get('codigo_barras', '')), 1, 0)
-            pdf.cell(col_widths[2], 8, str(prod.get('nombre', ''))[:30], 1, 0)
-            pdf.cell(col_widths[3], 8, f"RD$ {prod.get('precio', 0):.2f}", 1, 0, "R")
-            pdf.cell(col_widths[4], 8, str(prod.get('stock', 0)), 1, 1, "C")
+                pdf.set_font("Arial", "B", 9)
+                for i, header in enumerate(headers):
+                    pdf.cell(col_widths[i], 10, header, 1, 0, "C")
+                pdf.ln()
+                pdf.set_font("Arial", "", 9)
+
+            pdf.cell(col_widths[0], 8, str(prod.get('codigo_barras', '')).encode('latin-1', 'replace').decode('latin-1'), 1)
+            pdf.cell(col_widths[1], 8, str(prod.get('nombre', '')).encode('latin-1', 'replace').decode('latin-1')[:45], 1)
+            pdf.cell(col_widths[2], 8, f"{prod.get('costo', 0):.2f}", 1, 0, 'R')
+            pdf.cell(col_widths[3], 8, f"{prod.get('precio', 0):.2f}", 1, 0, 'R')
+            pdf.cell(col_widths[4], 8, str(prod.get('stock', 0)), 1, 0, 'C')
+            pdf.cell(col_widths[5], 8, str(prod.get('departamento', '')).encode('latin-1', 'replace').decode('latin-1')[:18], 1)
+            pdf.ln()
 
         pdf_output = pdf.output(dest='S').encode('latin-1')
         return send_file(
@@ -476,18 +938,52 @@ def api_generate_quotation_pdf():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/clients')
+@login_required
+def get_clients():
+    """Obtiene todos los clientes."""
+    try:
+        clientes = obtener_todos_los_clientes()
+        return jsonify({"success": True, "clients": clientes})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/client/add', methods=['POST'])
+@login_required
+def add_client():
+    """Agrega un nuevo cliente."""
+    data = request.get_json()
+    try:
+        agregar_cliente(data['nombre'], data.get('rnc_cedula'), data.get('telefono'), data.get('email'), data.get('direccion'))
+        return jsonify({"success": True, "message": "Cliente agregado correctamente."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/client/update/<client_id>', methods=['POST'])
+@login_required
+def update_client(client_id):
+    """Actualiza un cliente existente."""
+    data = request.get_json()
+    try:
+        actualizar_cliente(client_id, data['nombre'], data.get('rnc_cedula'), data.get('telefono'), data.get('email'), data.get('direccion'))
+        return jsonify({"success": True, "message": "Cliente actualizado correctamente."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/quotation/save', methods=['POST'])
 def save_quotation():
     """Guarda una cotización en la base de datos."""
     data = request.get_json()
     items = data.get('items', [])
     client_id = data.get('client_id')
+    validez_dias = data.get('validez_dias', 15) # Default a 15 días si no se especifica
 
     if not items:
         return jsonify({"success": False, "error": "No hay productos en la cotización."}), 400
 
     try:
-        cotizacion_id = guardar_cotizacion(items, client_id)
+        # Pasamos los días de validez a la función que guarda en la BD
+        cotizacion_id = guardar_cotizacion(items, client_id, validez_dias)
         return jsonify({"success": True, "message": f"Cotización guardada con ID: {cotizacion_id}", "quotation_id": cotizacion_id})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -506,9 +1002,61 @@ def get_accounts_receivable():
     """Devuelve la lista de cuentas por cobrar pendientes."""
     try:
         cuentas = obtener_cuentas_por_cobrar()
-        return jsonify(cuentas)
+        # Asegurar que no haya ObjectId en la estructura antes de serializar
+        def _make_serializable(obj):
+            if isinstance(obj, ObjectId):
+                return str(obj)
+            if isinstance(obj, dict):
+                return {k: _make_serializable(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_make_serializable(v) for v in obj]
+            return obj
+
+        serializable = _make_serializable(cuentas)
+        return jsonify(serializable)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/diagnose_sales', methods=['GET'])
+def diagnose_sales():
+    """Endpoint de diagnóstico: muestra todas las ventas sin filtros para investigación."""
+    try:
+        from database.database import ventas_collection
+        if ventas_collection is None:
+            return jsonify({"error": "Colección de ventas no inicializada"}), 500
+        
+        # Obtener todas las ventas sin filtros
+        todas_ventas = list(ventas_collection.find({}).sort("fecha", -1).limit(20))
+        
+        # Convertir ObjectIds a strings para serialización JSON
+        for v in todas_ventas:
+            v['_id'] = str(v['_id'])
+            if 'usuario_id' in v and v['usuario_id']:
+                v['usuario_id'] = str(v['usuario_id'])
+            if 'cliente_id' in v and v['cliente_id']:
+                v['cliente_id'] = str(v['cliente_id'])
+            if 'fecha' in v and isinstance(v['fecha'], datetime):
+                v['fecha'] = v['fecha'].isoformat()
+        
+        print(f"DEBUG diagnose_sales -> Total de ventas en BD (últimas 20): {len(todas_ventas)}")
+        
+        # Agrupar por estado
+        por_estado = {}
+        for v in todas_ventas:
+            estado = v.get('estado', 'SIN_ESTADO')
+            if estado not in por_estado:
+                por_estado[estado] = []
+            por_estado[estado].append(v)
+            print(f"  Venta: id={v['_id']}, estado={v.get('estado')}, tipo_pago={v.get('tipo_pago')}, saldo={v.get('saldo_pendiente')}, cliente_temp={v.get('temp_cliente_nombre')}")
+        
+        return jsonify({
+            "total_sales_shown": len(todas_ventas),
+            "sales_by_status": {k: len(v) for k, v in por_estado.items()},
+            "sales": todas_ventas
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route('/api/accounts_receivable/pay', methods=['POST'])
 def pay_accounts_receivable():
@@ -615,20 +1163,19 @@ def api_generate_quotation_pdf_from_saved(quotation_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/pos/register_sale', methods=['POST'])
+@login_required
 def api_register_sale():
     """Registra una venta realizada desde la interfaz web."""
     data = request.get_json()
     items = data.get('items', [])
-    client_id = data.get('client_id')
-    payment_method = data.get('payment_method')
+    client_id = data.get('client_id') # Puede ser null
+    payments = data.get('payments', [])
     discount = float(data.get('discount', 0.0))
+    # Nuevo campo para el nombre temporal del cliente
+    temp_client_name = data.get('temp_client_name')
 
-    # Para simplificar, asignaremos la venta al usuario 'admin' por defecto.
-    # Una implementación completa requeriría un sistema de login web.
-    admin_user = obtener_usuario_por_nombre('admin')
-    if not admin_user:
-        return jsonify({"success": False, "error": "Usuario 'admin' no encontrado para registrar la venta."}), 500
-    user_id = str(admin_user['_id'])
+    # Usar el usuario actualmente logueado
+    user_id = session.get('user_id')
 
     if not items:
         return jsonify({"success": False, "error": "No hay productos en la venta."}), 400
@@ -640,13 +1187,94 @@ def api_register_sale():
     total = subtotal_descontado
     itbis_incluido = subtotal_descontado - (subtotal_descontado / (1 + ITBIS_RATE))
 
+    # Determinar el tipo de pago principal (el primero en la lista de pagos)
+    tipo_pago = payments[0]['method'] if payments and len(payments) > 0 else 'Efectivo'
+    # Normalizar (sin acentos, minúsculas) para uso interno si es necesario
+    def _normalize(s):
+        if not s:
+            return ''
+        return ''.join(c for c in unicodedata.normalize('NFKD', str(s)) if not unicodedata.combining(c)).lower()
+    tipo_pago_norm = _normalize(tipo_pago)
+
     try:
-        venta_id = registrar_venta(items, total, itbis_incluido, discount, user_id, payment_method, client_id)
-        return jsonify({"success": True, "message": f"Venta #{venta_id} registrada correctamente.", "sale_id": venta_id})
+        # Log de debug
+        print(f"DEBUG - Items recibidos: {items}")
+        print(f"DEBUG - Client ID: {client_id}")
+        print(f"DEBUG - Tipo Pago: {tipo_pago} (norm: {tipo_pago_norm})")
+        print(f"DEBUG - Temp Client Name: {temp_client_name}")
+        # Si no hay conexión con la DB, guardar la venta localmente para sincronizar luego
+        if not is_db_connected():
+            sale_data = {
+                'items': items,
+                'total': total,
+                'itbis': itbis_incluido,
+                'descuento': discount,
+                'usuario_id': user_id,
+                'tipo_pago': tipo_pago,
+                'cliente_id': client_id,
+                'temp_client_name': temp_client_name,
+                'created_at': datetime.now().isoformat()
+            }
+            local_id = guardar_venta_local(sale_data)
+            return jsonify({
+                "success": True,
+                "message": "Venta guardada localmente (sincronizar cuando haya conexión).",
+                "sale_id": f"local-{local_id}",
+                "local_id": local_id
+            })
+
+        venta_id = registrar_venta(items, total, itbis_incluido, discount, user_id, tipo_pago, client_id, temp_client_name)
+        return jsonify({
+            "success": True,
+            "message": f"Venta #{venta_id} registrada correctamente.",
+            "sale_id": venta_id
+        })
     except Exception as e:
         # Log del error en el servidor para depuración
+        import traceback
+        trace = traceback.format_exc()
         print(f"Error al registrar venta desde la web: {e}")
-        return jsonify({"success": False, "error": f"No se pudo registrar la venta: {e}"}), 500
+        print(f"Traceback: {trace}")
+        # Devolver traceback en la respuesta para depuración en entorno controlado
+        return jsonify({"success": False, "error": f"No se pudo registrar la venta: {str(e)}", "traceback": trace}), 500
+
+@app.route('/api/pos/update_sale_client', methods=['POST'])
+@login_required
+def api_update_sale_client():
+    """
+    Actualiza el cliente de una venta a crédito que fue registrada sin cliente.
+    Permite asociar un cliente después de que la venta ya fue completada.
+    """
+    data = request.get_json()
+    sale_id = data.get('sale_id')
+    client_id = data.get('client_id')
+
+    if not sale_id or not client_id:
+        return jsonify({"success": False, "error": "Sale ID y Client ID son requeridos"}), 400
+
+    try:
+        from bson.objectid import ObjectId
+        # Actualizar la venta con el nuevo cliente
+        result = ventas_collection.update_one(
+            {"_id": ObjectId(sale_id)},
+            {
+                "$set": {
+                    "cliente_id": ObjectId(client_id),
+                    "temp_cliente_nombre": None  # Limpiar el nombre temporal
+                }
+            }
+        )
+
+        if result.matched_count == 0:
+            return jsonify({"success": False, "error": "Venta no encontrada"}), 404
+
+        return jsonify({
+            "success": True,
+            "message": "Cliente asociado exitosamente a la venta"
+        })
+    except Exception as e:
+        print(f"Error al actualizar cliente de venta: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/pos/print_ticket/<sale_id>')
 def print_ticket_web(sale_id):
@@ -654,90 +1282,951 @@ def print_ticket_web(sale_id):
     Genera una página HTML optimizada para impresión de ticket desde la web.
     """
     try:
-        # Intentar obtener datos reales de la venta por ID
-        # Nota: En un sistema real, necesitarías implementar la búsqueda de venta por ID
+        # Recuperar la venta y sus detalles para mostrar todos los artículos
+        venta, detalles = buscar_venta_por_id(sale_id)
 
-        # Por simplicidad, obtenemos la última venta registrada
-        # (esto funciona porque las ventas se registran justo antes de imprimir)
-        try:
-            # Obtener la última venta del día (aproximación)
-            ventas_hoy = obtener_ventas_del_dia()
-            if ventas_hoy and len(ventas_hoy) > 0:
-                venta = ventas_hoy[-1]  # Última venta
+        if not venta:
+            return f"<h1>Venta {sale_id} no encontrada</h1>", 404
 
-                # Obtener items de la venta
-                items_venta = obtener_items_venta(venta['id']) if 'id' in venta else []
+        # Obtener nombre del cliente (si existe) o usar nombre temporal
+        cliente_nombre = venta.get('temp_cliente_nombre')
+        if venta.get('cliente_id'):
+            cliente_doc = clientes_collection.find_one({"_id": venta.get('cliente_id')})
+            if cliente_doc:
+                cliente_nombre = cliente_doc.get('nombre', cliente_nombre)
 
-                ticket_data = {
-                    'sale_id': f"{venta.get('id', sale_id):06d}",
-                    'fecha': datetime.now().strftime('%d/%m/%Y %I:%M %p'),
-                    'cliente': 'Consumidor Final',  # Simplificado
-                    'items': [
-                        {
-                            'cantidad': item.get('cantidad', 1),
-                            'nombre': item.get('nombre', 'Producto'),
-                            'precio': item.get('precio_venta', 0),
-                            'subtotal': item.get('subtotal', 0)
-                        } for item in items_venta
-                    ],
-                    'subtotal_bruto': venta.get('total', 0) + venta.get('descuento', 0),
-                    'descuento': venta.get('descuento', 0),
-                    'itbis_rate': 0.18,  # Valor fijo de ITBIS
-                    'itbis_incluido': venta.get('itbis', 0),
-                    'total': venta.get('total', 0),
-                    'monto_recibido': None,  # No disponible en este formato
-                    'devuelta': None
-                }
-            else:
-                # Datos de test cuando no hay ventas previas
-                ticket_data = {
-                    'sale_id': f"WEB-{sale_id:04d}",
-                    'fecha': datetime.now().strftime('%d/%m/%Y %I:%M %p'),
-                    'cliente': 'Test - Consumidor Final',
-                    'items': [
-                        {'cantidad': 2, 'nombre': 'Producto Demo A', 'precio': 100.00, 'subtotal': 200.00},
-                        {'cantidad': 1, 'nombre': 'Producto Demo B', 'precio': 150.00, 'subtotal': 150.00}
-                    ],
-                    'subtotal_bruto': 350.00,
-                    'descuento': 0.00,
-                    'itbis_rate': 0.18,
-                    'itbis_incluido': 53.00,
-                    'total': 350.00,
-                    'monto_recibido': 400.00,
-                    'devuelta': 50.00
-                }
+        # Construir filas de items
+        items_html = ""
+        total_calc = 0
+        for d in detalles:
+            # producto_id puede ser ObjectId
+            prod = None
+            try:
+                prod = productos_collection.find_one({"_id": d.get('producto_id')})
+            except Exception:
+                prod = None
 
-        except Exception as db_error:
-            # Si hay error con base de datos, usar datos de test
-            print(f"Error obteniendo datos de venta: {db_error}")
-            ticket_data = {
-                'sale_id': f"WEB-{sale_id:04d}",
-                'fecha': datetime.now().strftime('%d/%m/%Y %I:%M %p'),
-                'cliente': 'Error - Consumidor Final',
-                'items': [
-                    {'cantidad': 1, 'nombre': 'Producto Error', 'precio': 0.00, 'subtotal': 0.00}
-                ],
-                'subtotal_bruto': 0.00,
-                'descuento': 0.00,
-                'itbis_rate': 0.18,
-                'itbis_incluido': 0.00,
-                'total': 0.00,
-                'monto_recibido': None,
-                'devuelta': None
-            }
+            nombre = prod.get('nombre') if prod else d.get('producto_id')
+            cantidad = d.get('cantidad', 0)
+            precio = d.get('precio_unitario', 0)
+            subtotal = cantidad * precio
+            total_calc += subtotal
+            items_html += f"<tr><td>{nombre}</td><td style='text-align:center;'>{cantidad}</td><td style='text-align:right;'>{precio:.2f}</td><td style='text-align:right;'>{subtotal:.2f}</td></tr>"
 
-        # Renderizar template especial para impresión
-        return render_template('print_ticket.html', ticket=ticket_data)
+        fecha_str = venta.get('fecha').strftime('%d/%m/%Y %H:%M:%S') if venta.get('fecha') else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ticket Venta #{sale_id}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 10px; }}
+                .ticket {{ max-width: 480px; margin: 0 auto; border: 1px solid #000; padding: 10px; }}
+                h2 {{ text-align: center; margin: 0 0 10px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+                th, td {{ border-bottom: 1px dashed #666; padding: 6px 4px; font-size: 14px; }}
+                th {{ text-align: left; }}
+                .right {{ text-align: right; }}
+                .totals {{ font-weight: bold; font-size: 16px; }}
+                .actions {{ text-align: center; margin-top: 10px; }}
+                button {{ padding: 8px 14px; margin: 4px; font-size: 14px; cursor: pointer; }}
+            </style>
+        </head>
+        <body>
+            <div class="ticket">
+                <h2>Ticket de Venta</h2>
+                <div><strong>ID:</strong> {sale_id}</div>
+                <div><strong>Fecha:</strong> {fecha_str}</div>
+                <div><strong>Cliente:</strong> {cliente_nombre or 'Cliente no asignado'}</div>
+
+                <table>
+                    <thead>
+                        <tr><th>Artículo</th><th style='text-align:center;'>Cant</th><th style='text-align:right;'>P.Unit</th><th style='text-align:right;'>Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                        {items_html}
+                    </tbody>
+                </table>
+
+                <div style="margin-top:8px; text-align:right;" class="totals">Total: {venta.get('total', 0):.2f}</div>
+                <div style="margin-top:4px; text-align:right;">Saldo pendiente: {venta.get('saldo_pendiente', 0):.2f}</div>
+
+                <div class="actions">
+                    <button onclick="window.print()">🖨️ Imprimir</button>
+                    <button onclick="window.close()">Cerrar</button>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return html_content
     except Exception as e:
         print(f"Error generando ticket: {e}")
-        return f"<h1>Error generando ticket: {e}</h1>", 500
+        return f"<h1>Error: {e}</h1>", 500
+
+
+@app.route('/api/pos/print_ticket_pdf/<sale_id>')
+def print_ticket_pdf(sale_id):
+    """Genera un PDF del ticket de venta, lo guarda en `static/tickets/` y lo devuelve para descarga."""
+    try:
+        # Recuperar la venta y sus detalles
+        venta, detalles = buscar_venta_por_id(sale_id)
+        if not venta:
+            return jsonify({"success": False, "error": "Venta no encontrada"}), 404
+
+        # Preparar directorio de salida
+        tickets_dir = Path(__file__).parent / 'static' / 'tickets'
+        tickets_dir.mkdir(parents=True, exist_ok=True)
+        pdf_path = tickets_dir / f'ticket_{sale_id}.pdf'
+
+        # Crear PDF
+        pdf = FPDF('P', 'mm', (80, 200))
+        pdf.set_auto_page_break(auto=True, margin=5)
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 6, 'Ticket de Venta', 0, 1, 'C')
+        pdf.ln(2)
+        pdf.set_font('Arial', '', 9)
+        fecha_str = venta.get('fecha').strftime('%d/%m/%Y %H:%M:%S') if venta.get('fecha') else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        cliente_nombre = venta.get('temp_cliente_nombre') or 'Cliente no asignado'
+        if venta.get('cliente_id'):
+            cliente_doc = clientes_collection.find_one({"_id": venta.get('cliente_id')})
+            if cliente_doc:
+                cliente_nombre = cliente_doc.get('nombre', cliente_nombre)
+
+        pdf.set_font('Arial', '', 9)
+        pdf.cell(0, 5, f'ID: {sale_id}', 0, 1)
+        pdf.cell(0, 5, f'Fecha: {fecha_str}', 0, 1)
+        pdf.cell(0, 5, f'Cliente: {cliente_nombre}', 0, 1)
+        pdf.ln(2)
+
+        # Encabezados de tabla
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(40, 5, 'Articulo', 0, 0)
+        pdf.cell(10, 5, 'Cant', 0, 0, 'C')
+        pdf.cell(20, 5, 'P.Unit', 0, 0, 'R')
+        pdf.cell(20, 5, 'Sub', 0, 1, 'R')
+        pdf.set_font('Arial', '', 9)
+
+        total_calc = 0
+        for d in detalles:
+            prod = None
+            try:
+                prod = productos_collection.find_one({"_id": d.get('producto_id')})
+            except Exception:
+                prod = None
+            nombre = (prod.get('nombre')[:28] if prod else str(d.get('producto_id')))
+            cantidad = d.get('cantidad', 0)
+            precio = d.get('precio_unitario', 0)
+            subtotal = cantidad * precio
+            total_calc += subtotal
+
+            pdf.cell(40, 5, nombre, 0, 0)
+            pdf.cell(10, 5, str(cantidad), 0, 0, 'C')
+            pdf.cell(20, 5, f'{precio:.2f}', 0, 0, 'R')
+            pdf.cell(20, 5, f'{subtotal:.2f}', 0, 1, 'R')
+
+        pdf.ln(2)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(70, 6, 'Total:', 0, 0, 'R')
+        pdf.cell(0, 6, f'{venta.get("total", 0):.2f}', 0, 1, 'R')
+        pdf.cell(70, 6, 'Saldo Pendiente:', 0, 0, 'R')
+        pdf.cell(0, 6, f'{venta.get("saldo_pendiente", 0):.2f}', 0, 1, 'R')
+
+        # Guardar PDF en disco
+        pdf.output(str(pdf_path))
+
+        # Devolver como descarga
+        return send_file(
+            str(pdf_path),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'ticket_{sale_id}.pdf'
+        )
+    except Exception as e:
+        import traceback
+        print(f"Error generando PDF del ticket: {e}")
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/pos/process_return', methods=['POST'])
+@login_required
+def api_process_return():
+    """Procesa una devolución de productos."""
+    data = request.get_json()
+    items = data.get('items', [])
+    reason = data.get('reason', 'Sin especificar')
+    original_sale_id = data.get('original_sale_id') # Opcional
+    user_id = session.get('user_id')
+
+    if not items:
+        return jsonify({"success": False, "error": "No hay productos para devolver."}), 400
+
+    try:
+        # La función en database.py se encarga de la lógica de stock
+        devolucion_id = registrar_devolucion(items, user_id, reason, original_sale_id)
+        return jsonify({
+            "success": True,
+            "message": f"Devolución #{devolucion_id} procesada correctamente. El stock ha sido actualizado.",
+            "return_id": devolucion_id
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/print_test')
 def print_test():
     """Página de prueba para impresión de tickets."""
     return render_template('print_ticket.html')
 
+# --- Rutas adicionales para nueva funcionalidad ---
+@app.route('/api/reports/sales/<report_type>', methods=['GET'])
+def get_sales_report(report_type):
+    """Genera reportes de ventas por tipo (daily, weekly, monthly)."""
+    try:
+        date_param = request.args.get('date')
+
+        if report_type == 'daily':
+            if not date_param:
+                date_param = datetime.now().date().isoformat()
+            ventas = obtener_ventas_del_dia(date_param)
+            chart_data = obtener_grafico_ventas('daily', date_param)
+
+        elif report_type == 'weekly':
+            # Para semanal, se usa la fecha como el último día de la semana
+            if not date_param:
+                date_param = datetime.now().date().isoformat()
+            fecha = datetime.fromisoformat(date_param).date()
+            inicio_semana = fecha - timedelta(days=fecha.weekday())
+            fin_semana = inicio_semana + timedelta(days=6)
+            ventas = obtener_ventas_por_periodo(
+                datetime.combine(inicio_semana, datetime.min.time()),
+                datetime.combine(fin_semana, datetime.max.time())
+            )
+            chart_data = obtener_grafico_ventas('weekly', date_param)
+
+        elif report_type == 'monthly':
+            if not date_param:
+                ahora = datetime.now()
+                date_param = f"{ahora.year}-{ahora.month:02d}"
+            fecha_mes = datetime.fromisoformat(date_param + "-01")
+            inicio_mes = fecha_mes.replace(day=1)
+            fin_mes = (inicio_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            ventas = obtener_ventas_por_periodo(inicio_mes, fin_mes)
+            chart_data = obtener_grafico_ventas('monthly', date_param)
+
+        else:
+            return jsonify({"success": False, "error": "Tipo de reporte inválido"}), 400
+
+        if not ventas:
+            return jsonify({"success": True, "data": None})
+
+        # Calcular estadísticas
+        summary = calcular_estadisticas_ventas(ventas)
+        breakdown = obtener_estadisticas_pago_ventas(ventas)
+
+        # Obtener top productos (sólo si hay ventas)
+        top_products_data = []
+        if ventas:
+            first_sale = min(ventas, key=lambda x: x.get('fecha', datetime.max))
+            last_sale = max(ventas, key=lambda x: x.get('fecha', datetime.min))
+            inicio_periodo = first_sale.get('fecha').date() if first_sale.get('fecha') else datetime.now().date()
+            fin_periodo = last_sale.get('fecha').date() if last_sale.get('fecha') else datetime.now().date()
+
+            top_products_raw = obtener_productos_mas_vendidos(
+                inicio_periodo.isoformat(),
+                fin_periodo.isoformat()
+            )
+
+            for codigo, nombre, cantidad in top_products_raw[:10]:
+                top_products_data.append({
+                    "codigo_barras": codigo,
+                    "nombre": nombre,
+                    "total_vendido": cantidad
+                })
+
+        # Formatear ventas para respuesta
+        formatted_ventas = []
+        for venta in ventas:
+            formatted_ventas.append({
+                "id": str(venta.get("id", "")),
+                "fecha": venta.get("fecha"),
+                "total": venta.get("total", 0),
+                "itbis": venta.get("itbis", 0),
+                "descuento": venta.get("descuento", 0),
+                "tipo_pago": venta.get("tipo_pago", "Sin especificar")
+            })
+
+        # Formatear breakdown para respuesta
+        formatted_breakdown = {}
+        for method_data in breakdown:
+            method_name = method_data["method"].lower()
+            formatted_breakdown[f"{method_name}_sales"] = method_data["amount"]
+            formatted_breakdown[f"{method_name}_percentage"] = round(method_data["percentage"], 2)
+
+        response_data = {
+            "summary": {
+                "total_sales": summary["total_sales"],
+                "total_transactions": summary["total_transactions"],
+                "avg_sale": summary["avg_sale"],
+                "total_profit": summary["total_profit"]  # Estimación simplificada
+            },
+            "breakdown": formatted_breakdown,
+            "chart_labels": chart_data["labels"],
+            "chart_data": chart_data["data"],
+            "details": formatted_ventas,
+            "top_products": top_products_data
+        }
+
+        return jsonify({"success": True, "data": response_data})
+
+    except Exception as e:
+        print(f"Error generando reporte de ventas: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- RUTAS DE NOTIFICACIONES EN TIEMPO REAL ---
+@app.route('/api/notifications')
+def get_notifications():
+    """Obtiene todas las notificaciones activas del sistema."""
+    try:
+        # Obtener diferentes tipos de notificaciones
+        low_stock = obtener_notificaciones_stock_bajo()
+        overdue_payments = obtener_notificaciones_pagos_vencidos()
+        expiring_products = obtener_notificaciones_productos_por_vencer()
+        overdue_receivables = obtener_notificaciones_cuentas_por_cobrar_vencidas()
+
+        all_notifications = []
+        all_notifications.extend(low_stock)
+        all_notifications.extend(overdue_payments)
+        all_notifications.extend(expiring_products)
+        all_notifications.extend(overdue_receivables)
+
+        # Ordenar por prioridad y fecha
+        notification_priority = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
+        all_notifications.sort(key=lambda x: (
+            notification_priority.get(x.get('priority', 'low'), 1),
+            x.get('created_at', datetime.min)
+        ), reverse=True)
+
+        return jsonify({"success": True, "notifications": all_notifications})
+
+    except Exception as e:
+        print(f"Error obteniendo notificaciones: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/notifications/dismiss/<notification_id>', methods=['POST'])
+def dismiss_notification(notification_id):
+    """Marca una notificación como leída/descartada."""
+    try:
+        # En este caso, como no tenemos tabla de notificaciones,
+        # simplemente devolvemos éxito (simulado)
+        return jsonify({"success": True, "message": "Notificación descartada"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- RUTAS DE AUTOMATIZACIONES ---
+@app.route('/api/automations/reorder_suggestions')
+def get_reorder_suggestions():
+    """Obtiene sugerencias inteligentes de reordenamiento."""
+    try:
+        suggestions = obtener_sugerencias_reordenamiento()
+        return jsonify({"success": True, "suggestions": suggestions})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/automations/apply_reorder/<product_id>', methods=['POST'])
+def apply_reorder_suggestion(product_id):
+    """Aplica una sugerencia de reordenamiento automáticamente."""
+    try:
+        data = request.get_json()
+        cantidad = data.get('cantidad', 0)
+
+        if cantidad <= 0:
+            return jsonify({"success": False, "error": "Cantidad inválida"}), 400
+
+        # Aumentar stock del producto
+        sumar_stock_producto(product_id, cantidad)
+
+        # Registrar la acción en logs (simulado)
+        return jsonify({"success": True, "message": f"Reorden aplicado: +{cantidad} unidades"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/automations/generate_po_pdf', methods=['POST'])
+@login_required
+def generate_purchase_order_pdf():
+    """Genera un PDF de Orden de Compra para un proveedor y productos específicos."""
+    data = request.get_json()
+    products = data.get('products', [])
+    supplier_name = data.get('supplier_name', 'Proveedor no especificado')
+
+    if not products:
+        return jsonify({"success": False, "error": "No hay productos para generar la orden."}), 400
+
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+
+        # Encabezado
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "ORDEN DE COMPRA", 0, 1, "C")
+        pdf.ln(10)
+
+        # Información del Pedido
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(40, 8, "Proveedor:")
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(0, 8, supplier_name, 0, 1)
+
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(40, 8, "Fecha:")
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(0, 8, datetime.now().strftime('%d/%m/%Y'), 0, 1)
+        pdf.ln(10)
+
+        # Tabla de Productos
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(100, 8, "Producto", 1, 0, "C")
+        pdf.cell(30, 8, "Cantidad Sug.", 1, 0, "C")
+        pdf.cell(30, 8, "Costo Unit.", 1, 0, "C")
+        pdf.cell(30, 8, "Subtotal", 1, 1, "C")
+
+        pdf.set_font("Arial", "", 9)
+        total_pedido = 0
+        for prod in products:
+            subtotal = prod.get('suggested_quantity', 0) * prod.get('costo', 0)
+            total_pedido += subtotal
+            pdf.cell(100, 8, str(prod.get('product_name', 'N/A'))[:50], 1)
+            pdf.cell(30, 8, str(prod.get('suggested_quantity', 0)), 1, 0, "C")
+            pdf.cell(30, 8, f"RD$ {prod.get('costo', 0):.2f}", 1, 0, "R")
+            pdf.cell(30, 8, f"RD$ {subtotal:.2f}", 1, 1, "R")
+
+        # Total
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(160, 10, "TOTAL ESTIMADO:", 0, 0, "R")
+        pdf.cell(30, 10, f"RD$ {total_pedido:.2f}", 1, 1, "R")
+
+        pdf_output = pdf.output(dest='S').encode('latin-1')
+        return send_file(io.BytesIO(pdf_output), mimetype='application/pdf', as_attachment=True, download_name=f'Orden_Compra_{supplier_name.replace(" ", "_")}.pdf')
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- RUTAS PARA CIERRE DE CAJA WEB ---
+@app.route('/api/cash_closing/summary', methods=['POST'])
+@login_required
+def get_cash_closing_summary():
+    """Obtiene el resumen de ventas por método de pago para un rango de fechas."""
+    data = request.get_json()
+    start_date_str = data.get('start_date')
+    end_date_str = data.get('end_date')
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").replace(hour=0, minute=0, second=0)
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        
+        summary = obtener_resumen_ventas_por_metodo(start_date, end_date)
+        return jsonify({"success": True, "summary": summary})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/cash_closing/finalize', methods=['POST'])
+@login_required
+def finalize_cash_closing():
+    """Guarda un registro de cierre de caja."""
+    data = request.get_json()
+    
+    # Añadir información del usuario que realiza el cierre
+    data['usuario_id'] = session.get('user_id')
+    data['usuario_nombre'] = session.get('username')
+    data['fecha_cierre'] = datetime.now()
+
+    try:
+        registrar_cierre_caja(data)
+        return jsonify({"success": True, "message": "Cierre de caja guardado exitosamente."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/automations/bulk_price_update', methods=['POST'])
+def bulk_price_update():
+    """Actualización masiva de precios basada en reglas."""
+    try:
+        data = request.get_json()
+        rule_type = data.get('rule_type')
+        percentage = data.get('percentage', 0)
+        department = data.get('department')
+
+        if rule_type == 'percentage':
+            productos_afectados = actualizar_precios_por_porcentaje(percentage, department)
+        elif rule_type == 'inflation':
+            # Ajuste por inflación (ejemplo)
+            productos_afectados = actualizar_precios_por_porcentaje(5.0, department)
+        else:
+            return jsonify({"success": False, "error": "Tipo de regla inválida"}), 400
+
+        return jsonify({
+            "success": True,
+            "message": f"Precios actualizados: {productos_afectados} productos afectados",
+            "affected_products": productos_afectados
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/automations/create_backup', methods=['POST'])
+def create_backup():
+    """Crea un backup automático de la base de datos (simulado)."""
+    try:
+        # Aquí iría la lógica real de backup
+        # Por ahora solo simulamos
+        backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        # Simular tiempo de procesamiento
+        import time
+        time.sleep(1)
+
+        return jsonify({
+            "success": True,
+            "message": "Backup creado exitosamente",
+            "backup_id": backup_id,
+            "backup_date": datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/automations/sales_prediction/<days>')
+def get_sales_prediction(days):
+    """Predice ventas futuras basado en datos históricos."""
+    try:
+        days = int(days)
+        if days not in [7, 30, 90]:
+            return jsonify({"success": False, "error": "Días inválidos. Use 7, 30 o 90"}), 400
+
+        prediction = obtener_prediccion_ventas(days)
+
+        return jsonify({
+            "success": True,
+            "prediction": prediction,
+            "period_days": days
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- GESTIÓN DE USUARIOS WEB ---
+
+@app.route('/users')
+@login_required
+def users_page():
+    """Muestra la página de gestión de usuarios."""
+    # Solo administradores pueden acceder
+    if session.get('role') != 'Administrador':
+        flash('No tienes permisos para acceder a esta sección.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    return render_template('users.html')
+
+@app.route('/api/users')
+@login_required
+def get_users():
+    """Obtiene la lista de usuarios (solo para administradores)."""
+    if session.get('role') != 'Administrador':
+        return jsonify({"success": False, "error": "No tienes permisos"}), 403
+
+    try:
+        usuarios = obtener_todos_los_usuarios()
+        # Agregar ID como string para JSON
+        for usuario in usuarios:
+            usuario["_id"] = str(usuario["_id"])
+        return jsonify({"success": True, "users": usuarios})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/users/create', methods=['POST'])
+@login_required
+def create_user():
+    """Crea un nuevo usuario (solo administradores)."""
+    if session.get('role') != 'Administrador':
+        return jsonify({"success": False, "error": "No tienes permisos"}), 403
+
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    role = data.get('role')
+
+    if not username or not password or not role:
+        return jsonify({"success": False, "error": "Todos los campos son requeridos"}), 400
+
+    if len(password) < 6:
+        return jsonify({"success": False, "error": "La contraseña debe tener al menos 6 caracteres"}), 400
+
+    if role not in ['Administrador', 'Vendedor', 'Almacenista']:
+        return jsonify({"success": False, "error": "Rol inválido"}), 400
+
+    try:
+        crear_usuario(username, password, role)
+        return jsonify({"success": True, "message": f"Usuario '{username}' creado exitosamente"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error al crear usuario: {str(e)}"}), 500
+
+@app.route('/api/users/delete/<user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    """Elimina un usuario (solo administradores)."""
+    if session.get('role') != 'Administrador':
+        return jsonify({"success": False, "error": "No tienes permisos"}), 403
+
+    # Evitar que un admin se borre a si mismo
+    if user_id == session.get('user_id'):
+        return jsonify({"success": False, "error": "No puedes eliminarte a ti mismo"}), 400
+
+    try:
+        # Verificar que existe al menos otro administrador
+        usuarios = obtener_todos_los_usuarios()
+        admin_count = sum(1 for u in usuarios if u.get('rol') == 'Administrador')
+
+        if admin_count <= 1:
+            return jsonify({"success": False, "error": "Debe existir al menos un administrador"}), 400
+
+        eliminar_usuario(user_id)
+        return jsonify({"success": True, "message": "Usuario eliminado exitosamente"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error al eliminar usuario: {str(e)}"}), 500
+
+@app.route('/api/users/password/change', methods=['POST'])
+@login_required
+def change_password():
+    """Cambia la contraseña del usuario actual."""
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    if not current_password or not new_password:
+        return jsonify({"success": False, "error": "Todos los campos son requeridos"}), 400
+
+    if len(new_password) < 6:
+        return jsonify({"success": False, "error": "La contraseña debe tener al menos 6 caracteres"}), 400
+
+    # Verificar contraseña actual
+    user = obtener_usuario_por_nombre(session.get('username'))
+    if not user or not check_password(current_password, user['hash_contrasena']):
+        return jsonify({"success": False, "error": "Contraseña actual incorrecta"}), 400
+
+    try:
+        actualizar_contrasena(user['_id'], new_password)
+        return jsonify({"success": True, "message": "Contraseña cambiada exitosamente"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error al cambiar contraseña: {str(e)}"}), 500
+
+# --- AUTORIZACIÓN PARA PROVEEDORES ---
+@app.route('/api/supplier/orders/send', methods=['POST'])
+@login_required
+def send_supplier_order():
+    """Envía un pedido automático a un proveedor."""
+    data = request.get_json()
+    proveedor_id = data.get('proveedor_id')
+    productos = data.get('productos', [])  # [{"producto_id": "id", "cantidad": 10, "precio_unitario": 100}]
+
+    if not proveedor_id or not productos:
+        return jsonify({"success": False, "error": "Proveedor y productos son requeridos"}), 400
+
+    try:
+        # Obtener información del proveedor
+        proveedor = proveedores_collection.find_one({"_id": ObjectId(proveedor_id)})
+        if not proveedor:
+            return jsonify({"success": False, "error": "Proveedor no encontrado"}), 404
+
+        # Crear pedido
+        pedido = {
+            "proveedor_id": ObjectId(proveedor_id),
+            "productos": productos,
+            "fecha_pedido": datetime.now(),
+            "estado": "Enviado",
+            "total": sum(p['cantidad'] * p['precio_unitario'] for p in productos),
+            "usuario_id": ObjectId(session['user_id']),
+            "referencia_pedido": f"PED-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        }
+
+        # Guardar en colección de pedidos a proveedores
+        pedidos_proveedores_collection = db["pedidos_proveedores"]
+        result = pedidos_proveedores_collection.insert_one(pedido)
+        pedido_id = str(result.inserted_id)
+
+        # Aquí se podría integrar con API del proveedor si tiene una
+        # Por ejemplo, enviar email al proveedor con el pedido
+
+        return jsonify({
+            "success": True,
+            "message": f"Pedido enviado a {proveedor['nombre']}",
+            "pedido_id": pedido_id,
+            "referencia": pedido['referencia_pedido']
+        })
+
+    except Exception as e:
+        print(f"Error enviando pedido a proveedor: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/supplier/orders')
+@login_required
+def get_supplier_orders():
+    """Obtiene histórico de pedidos a proveedores."""
+    try:
+        pedidos = list(db["pedidos_proveedores"].aggregate([
+            {"$lookup": {
+                "from": "proveedores",
+                "localField": "proveedor_id",
+                "foreignField": "_id",
+                "as": "proveedor"
+            }},
+            {"$unwind": "$proveedor"},
+            {"$lookup": {
+                "from": "usuarios",
+                "localField": "usuario_id",
+                "foreignField": "_id",
+                "as": "usuario"
+            }},
+            {"$unwind": {"path": "$usuario", "preserveNullAndEmptyArrays": True}},
+            {"$project": {
+                "_id": 1,
+                "proveedor_nombre": "$proveedor.nombre",
+                "estado": 1,
+                "total": 1,
+                "fecha_pedido": 1,
+                "referencia_pedido": 1,
+                "usuario": {"$ifNull": ["$usuario.nombre_usuario", "Sistema"]}
+            }},
+            {"$sort": {"fecha_pedido": -1}}
+        ]))
+
+        for pedido in pedidos:
+            pedido["_id"] = str(pedido["_id"])
+
+        return jsonify(pedidos)
+
+    except Exception as e:
+        print(f"Error obteniendo pedidos a proveedores: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- SISTEMA DE BACKUPS AUTOMÁTICOS ---
+import schedule
+import time
+import threading
+import subprocess
+import os
+
+backup_jobs = {}
+backup_request_queue = []
+
+@app.route('/api/backup/create', methods=['POST'])
+@login_required
+def create_manual_backup():
+    """Crea un backup manual de la base de datos."""
+    try:
+        if session.get('role') != 'Administrador':
+            return jsonify({"success": False, "error": "Solo administradores pueden crear backups"}), 403
+
+        backup_id = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        backup_path = f"backups/{backup_id}"
+
+        # Crear directorio si no existe
+        os.makedirs("backups", exist_ok=True)
+
+        # Comando para crear backup de MongoDB
+        cmd = [
+            "mongodump",
+            "--db", DB_NAME,
+            "--out", backup_path,
+            "--uri", MONGODB_URI.replace("mongodb+srv://", "").split("@")[0]  # Extraer credenciales si es necesario
+        ]
+
+        # Ejecutar backup
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            # Registrar backup en colección
+            backup_info = {
+                "backup_id": backup_id,
+                "tipo": "manual",
+                "fecha": datetime.now(),
+                "ruta": backup_path,
+                "tamaño": "Calculando...",
+                "estado": "Completado",
+                "usuario_creador": session['user_id']
+            }
+
+            db["backups"].insert_one(backup_info)
+
+            return jsonify({
+                "success": True,
+                "message": f"Backup creado exitosamente: {backup_id}",
+                "backup_id": backup_id
+            })
+        else:
+            return jsonify({"success": False, "error": f"Error en mongodump: {result.stderr}"}), 500
+
+    except Exception as e:
+        print(f"Error creando backup: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/backup/list')
+@login_required
+def list_backups():
+    """Lista todos los backups disponibles."""
+    try:
+        if session.get('role') != 'Administrador':
+            return jsonify({"success": False, "error": "Solo administradores pueden ver backups"}), 403
+
+        backups = list(db["backups"].find({}, {"_id": 0}).sort("fecha", -1))
+
+        # Calcular tamaño de archivos si existen
+        for backup in backups:
+            try:
+                backup_path = backup.get("ruta")
+                if backup_path and os.path.exists(backup_path):
+                    total_size = 0
+                    for dirpath, dirnames, filenames in os.walk(backup_path):
+                        for f in filenames:
+                            fp = os.path.join(dirpath, f)
+                            total_size += os.path.getsize(fp)
+                    backup["tamaño"] = f"{total_size / (1024*1024):.2f} MB"
+                else:
+                    backup["tamaño"] = "No encontrado"
+            except Exception as e:
+                backup["tamaño"] = "Error calculando"
+
+        return jsonify(backups)
+
+    except Exception as e:
+        print(f"Error listando backups: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/backup/restore/<backup_id>', methods=['POST'])
+@login_required
+def restore_backup(backup_id):
+    """Restaura un backup específico."""
+    try:
+        if session.get('role') != 'Administrador':
+            return jsonify({"success": False, "error": "Solo administradores pueden restaurar backups"}), 403
+
+        # Buscar backup
+        backup = db["backups"].find_one({"backup_id": backup_id})
+        if not backup:
+            return jsonify({"success": False, "error": "Backup no encontrado"}), 404
+
+        backup_path = backup.get("ruta")
+        if not backup_path or not os.path.exists(backup_path):
+            return jsonify({"success": False, "error": "Archivo de backup no encontrado"}), 404
+
+        # Comando para restaurar
+        cmd = [
+            "mongorestore",
+            "--db", DB_NAME,
+            "--drop",
+            backup_path + "/" + DB_NAME
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            return jsonify({
+                "success": True,
+                "message": f"Backup {backup_id} restaurado exitosamente"
+            })
+        else:
+            return jsonify({"success": False, "error": f"Error en mongorestore: {result.stderr}"}), 500
+
+    except Exception as e:
+        print(f"Error restaurando backup: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def schedule_automatic_backups():
+    """Programa backups automáticos diarios."""
+    def daily_backup():
+        try:
+            backup_id = f"auto_backup_{datetime.now().strftime('%Y%m%d')}"
+
+            # Evitar duplicados del día
+            existing = db["backups"].find_one({
+                "backup_id": backup_id,
+                "tipo": "automatico"
+            })
+
+            if not existing:
+                backup_path = f"backups/{backup_id}"
+                os.makedirs("backups", exist_ok=True)
+
+                cmd = ["mongodump", "--db", DB_NAME, "--out", backup_path]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+
+                if result.returncode == 0:
+                    backup_info = {
+                        "backup_id": backup_id,
+                        "tipo": "automatico",
+                        "fecha": datetime.now(),
+                        "ruta": backup_path,
+                        "estado": "Completado",
+                        "programado": True
+                    }
+                    db["backups"].insert_one(backup_info)
+                    print(f"Backup automático creado: {backup_id}")
+
+        except Exception as e:
+            print(f"Error en backup automático: {e}")
+
+    # Programar backup diario a las 2 AM
+    schedule.every().day.at("02:00").do(daily_backup)
+
+    def run_scheduler():
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+
+    # Ejecutar scheduler en hilo separado
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
+
+# Inicializar backups automáticos cuando el servidor inicia
+schedule_automatic_backups()
+
+@app.route('/api/system/health')
+@login_required
+def system_health():
+    """Verifica el estado del sistema (para debugging)."""
+    try:
+        health_check = {
+            "database": {
+                "status": "online",
+                "last_backup": None,
+                "connection": "ok"
+            },
+            "backups_enabled": True,
+            "scheduler_active": len(schedule.jobs) > 0,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        # Obtener último backup
+        last_backup = db["backups"].find_one(sort=[("fecha", -1)])
+        if last_backup:
+            health_check["database"]["last_backup"] = last_backup["fecha"].isoformat()
+
+        return jsonify({"success": True, "health": health_check})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- MODALES PARA BACKUPS EN PANEL DE ADMINISTRACIÓN ---
+@login_required
+@app.route('/backups')
+def backups_page():
+    """Página de gestión de backups."""
+    if session.get('role') != 'Administrador':
+        flash('No tienes permisos para acceder a esta sección.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    return render_template('backups.html')
 
 if __name__ == '__main__':
     # La opción host='0.0.0.0' hace que el servidor sea accesible

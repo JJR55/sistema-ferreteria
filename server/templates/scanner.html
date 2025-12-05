@@ -1,89 +1,156 @@
 {% extends "layout.html" %}
 
-{% block title %}Escáner - Sistema Ferretería{% endblock %}
+{% block title %}Escáner de Inventario{% endblock %}
 
 {% block page_title %}<i class="bi bi-upc-scan"></i> Escáner de Inventario{% endblock %}
 
-{% block breadcrumb %}Captura de Productos{% endblock %}
+{% block breadcrumb %}Escáner{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-6">
-            <!-- Área de la cámara -->
-            <div class="card shadow-lg">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-camera"></i> Escáner de Códigos de Barras</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Overlay para activar cámara -->
-                    <div id="camera-overlay" class="camera-activation-overlay" style="display: block;">
-                        <div class="overlay-content">
-                            <i class="bi bi-camera-video display-4 text-primary"></i>
-                            <h4 class="mt-3">Activando Cámara</h4>
-                            <p class="text-muted">Haga clic aquí o toque la pantalla para activar el escáner</p>
-                            <button id="activate-camera-btn" class="btn btn-primary btn-lg">
-                                <i class="bi bi-play-circle-fill"></i> Activar Cámara
-                            </button>
+<div class="container-fluid d-flex justify-content-center">
+    <div class="w-100">
+        <ul class="nav nav-tabs" id="scannerTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="product-scanner-tab" data-bs-toggle="tab" data-bs-target="#product-scanner-pane" type="button" role="tab" aria-controls="product-scanner-pane" aria-selected="true"><i class="bi bi-upc-scan"></i> Escáner de Productos</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="invoice-scanner-tab" data-bs-toggle="tab" data-bs-target="#invoice-scanner-pane" type="button" role="tab" aria-controls="invoice-scanner-pane" aria-selected="false"><i class="bi bi-receipt-cutoff"></i> Escáner de Facturas</button>
+            </li>
+        </ul>
+
+        <div class="tab-content pt-3" id="scannerTabsContent">
+            <!-- Pestaña: Escáner de Productos -->
+            <div class="tab-pane fade show active" id="product-scanner-pane" role="tabpanel" aria-labelledby="product-scanner-tab">
+                <div class="row">
+                    <!-- Columna Izquierda: Visor de la Cámara -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-camera-video-fill"></i> Visor de la Cámara</h5>
+                            </div>
+                            <div class="card-body text-center d-flex flex-column align-items-center justify-content-center">
+                                <!-- Contenedor del visor de la cámara -->
+                                <div id="interactive" class="viewport mx-auto" style="max-width: 480px; min-height: 360px; position: relative; background: #000; border-radius: 8px; overflow: hidden;">
+                                    <!-- El video y el canvas de QuaggaJS se insertarán aquí -->
+                                    <video autoplay="true" preload="auto" src="" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                    <canvas class="drawingBuffer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+
+                                    <!-- Overlay que se ocultará cuando la cámara esté activa -->
+                                    <div id="camera-overlay" class="d-flex justify-content-center align-items-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); cursor: pointer;">
+                                        <!-- El botón de activación está ahora dentro del overlay -->
+                                    </div>
+                                </div>
+
+                                <!-- Mensaje de instrucción y botón de activación -->
+                                <div id="activation-container" class="mt-3">
+                                    <p class="text-muted mb-2" id="camera-instruction-message">Haz clic en "Activar Cámara" para iniciar el escáner</p>
+                                    <button id="activate-camera-btn" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-camera-fill"></i> Activar Cámara
+                                    </button>
+                                </div>
+
+                                <div id="scanner-status" class="mt-2 text-muted"></div>
+                                <button id="toggle-camera-btn" class="btn btn-sm btn-outline-info mt-2" style="display: none;">
+                                    <i class="bi bi-arrow-repeat"></i> Cambiar Cámara
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div id="interactive" class="text-center bg-dark rounded p-3" style="min-height: 300px; display: none;"></div>
-                    <div class="mt-3">
-                        <div class="alert alert-info">
-                            <small><i class="bi bi-info-circle"></i> La cámara se activa automáticamente al abrir esta página</small>
+
+                    <!-- Columna Derecha: Panel de Productos Escaneados -->
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-list-check text-success"></i> Productos Escaneados</h5>
+                                    <span id="products-count" class="badge bg-secondary rounded-pill">0 productos</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="product-list" style="max-height: 400px; overflow-y: auto;">
+                                    <div class="text-center text-muted p-5">
+                                        <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
+                                        <p class="mt-2">Los productos escaneados aparecerán aquí.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <button id="confirm-stock" class="btn btn-success">
+                                    <i class="bi bi-check-circle-fill"></i> Confirmar y Agregar al Stock
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Búsqueda Manual -->
-            <div class="card shadow-lg mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-search"></i> Búsqueda Manual</h5>
-                </div>
-                <div class="card-body">
-                    <div class="input-group">
-                        <input type="text" id="search-input" class="form-control" placeholder="Buscar producto por nombre...">
-                        <button id="search-button" class="btn btn-primary" type="button">
-                            <i class="bi bi-search"></i> Buscar
-                        </button>
-                    </div>
-                    <div id="search-results" class="mt-2"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <!-- Lista de productos escaneados -->
-            <div class="card shadow-lg">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Productos a Ingresar</h5>
-                    <span class="badge bg-primary" id="products-count">0 productos</span>
-                </div>
-                <div class="card-body">
-                    <div id="product-list" style="min-height: 400px;">
-                        <!-- Aquí se añadirán dinámicamente los productos escaneados -->
-                        <div class="text-center text-muted mt-5">
-                            <i class="bi bi-upc-scan display-4"></i>
-                            <p>Escanee productos para comenzar...</p>
+            <!-- Pestaña: Escáner de Facturas -->
+            <div class="tab-pane fade" id="invoice-scanner-pane" role="tabpanel" aria-labelledby="invoice-scanner-tab">
+                <div class="row">
+                    <!-- Columna de Carga -->
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-upload"></i> 1. Cargar Imagen de la Factura</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Sube una foto clara de la factura o usa la cámara de tu dispositivo.</p>
+                                <div class="input-group mb-3">
+                                    <input type="file" class="form-control" id="invoice-image-upload" accept="image/*">
+                                </div>
+                                <div class="d-grid">
+                                    <button class="btn btn-primary" id="process-image-btn" disabled>
+                                        <i class="bi bi-gear-fill"></i> Procesar Imagen
+                                    </button>
+                                </div>
+                                <div id="image-preview-container" class="mt-3" style="display: none;">
+                                    <h6>Vista Previa:</h6>
+                                    <img id="image-preview" src="#" alt="Vista previa de la factura" class="img-fluid rounded border">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="card-footer">
-                    <button id="confirm-stock" class="btn btn-success btn-lg w-100" disabled>
-                        <i class="bi bi-check-circle"></i> Confirmar Ingreso de Stock
-                    </button>
-                </div>
-            </div>
 
-            <!-- Consola de estado -->
-            <div class="card shadow-lg mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-terminal"></i> Estado del Escáner</h6>
-                </div>
-                <div class="card-body">
-                    <div id="scanner-status" class="alert alert-secondary small">
-                        <i class="bi bi-circle-fill text-muted"></i> Inicializando escáner...
+                    <!-- Columna de Resultados -->
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-pencil-square"></i> 2. Revisar y Completar Datos</h5>
+                                <button class="btn btn-success" id="add-to-inventory-btn" style="display: none;">
+                                    <i class="bi bi-check-circle-fill"></i> Agregar Productos al Inventario
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="results-container">
+                                    <div id="initial-state" class="text-center text-muted p-5">
+                                        <i class="bi bi-card-text" style="font-size: 3rem;"></i>
+                                        <p class="mt-2">Los productos extraídos de la factura aparecerán aquí.</p>
+                                    </div>
+                                    <div id="loading-state" class="text-center p-5" style="display: none;">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Procesando...</span>
+                                        </div>
+                                        <p class="mt-3">Analizando factura, por favor espere...</p>
+                                    </div>
+                                    <div class="table-responsive" id="results-table-container" style="display: none;">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre del Producto (Editable)</th>
+                                                    <th>Cantidad</th>
+                                                    <th>Precio Costo (Editable)</th>
+                                                    <th>Precio Venta (Requerido)</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="results-table-body">
+                                                <!-- Filas de productos extraídos -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -91,150 +158,57 @@
     </div>
 </div>
 
-<!-- Elementos para feedback -->
-<div id="toast" class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="toast-element" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body" id="toast-message"></div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+<!-- Modal para Editar Nuevo Producto -->
+<div class="modal fade" id="editNewProductModal" tabindex="-1" aria-labelledby="editNewProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editNewProductModalLabel"><i class="bi bi-pencil-square"></i> Editar Nuevo Producto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-product-id">
+        <div class="mb-3">
+          <label for="edit-product-name" class="form-label">Nombre del Producto</label>
+          <input type="text" class="form-control" id="edit-product-name">
         </div>
+        <div class="mb-3">
+          <label for="edit-product-price" class="form-label">Precio de Venta (RD$)</label>
+          <input type="number" class="form-control" id="edit-product-price" min="0" step="0.01">
+        </div>
+        <div class="alert alert-info small">
+            <i class="bi bi-info-circle-fill"></i>
+            El costo y el stock mínimo se pueden ajustar más tarde desde la página de Inventario.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="save-product-changes-btn">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loader -->
+<div id="loader" class="d-none justify-content-center align-items-center" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); z-index: 1060;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
     </div>
 </div>
 
-<div id="loader" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 1050;">
-    <div class="spinner-border text-primary" role="status"></div>
+<!-- Toast para notificaciones (reutilizado para ambas pestañas) -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="toast-element" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+        <div class="toast-body" id="toast-message"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
 </div>
-
 {% endblock %}
-
-<!-- Estilos personalizados para el escáner -->
-<style>
-/* Overlay para activación de cámara */
-.camera-activation-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(0,123,255,0.1), rgba(40,167,69,0.1));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    border-radius: 8px;
-    backdrop-filter: blur(2px);
-}
-
-.overlay-content {
-    text-align: center;
-    padding: 20px;
-    background: rgba(255,255,255,0.95);
-    border-radius: 15px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-    max-width: 300px;
-    width: 100%;
-}
-
-.overlay-content h4 {
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-.overlay-content p {
-    font-size: 0.9rem;
-    margin-bottom: 1.5rem;
-}
-
-/* Estilos del botón de activación */
-#activate-camera-btn {
-    background: linear-gradient(135deg, #007bff, #6610f2) !important;
-    border: none !important;
-    border-radius: 50px;
-    padding: 12px 30px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
-}
-
-#activate-camera-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,123,255,0.4);
-    background: linear-gradient(135deg, #0056b3, #5a0fc8) !important;
-}
-
-/* Estilos del video cuando está activo */
-#interactive.active {
-    display: block !important;
-    position: relative;
-}
-
-#interactive video {
-    width: 100% !important;
-    height: 300px !important;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-/* Indicadores de estado del escáner */
-.scanner-status-ready .alert {
-    background: linear-gradient(135deg, rgba(40,167,69,0.1), rgba(34,197,94,0.1)) !important;
-    border-left: 4px solid #28a745 !important;
-}
-
-.scanner-status-error .alert {
-    background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(255,69,96,0.1)) !important;
-    border-left: 4px solid #dc3545 !important;
-}
-
-.scanner-status-loading .alert {
-    background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,223,125,0.1)) !important;
-    border-left: 4px solid #ffc107 !important;
-}
-
-/* Estilos para resultados de búsqueda */
-.search-result-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    margin-bottom: 5px;
-    background: #f8f9fa;
-}
-
-.search-result-item:hover {
-    background: #e9ecef;
-    border-color: #007bff;
-}
-
-.search-result-item span {
-    font-weight: 500;
-}
-
-.search-result-item button {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 5px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.search-result-item button:hover {
-    background: #0056b3;
-}
-
-.no-results {
-    text-align: center;
-    color: #6c757d;
-    padding: 20px;
-    font-style: italic;
-}
-</style>
 
 {% block extra_scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script src="{{ url_for('static', filename='js/invoice_scanner.js') }}"></script>
 {% endblock %}

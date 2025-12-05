@@ -4,3 +4,13 @@ gunicorn
 requests
 werkzeug
 fpdf
+schedule
+bcrypt
+xlsxwriter
+openpyxl
+camelot-py
+tabula-py
+pyzbar
+opencv-python
+pillow
+numpy

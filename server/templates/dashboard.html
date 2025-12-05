@@ -97,223 +97,87 @@
         </div>
     </div>
 
-    <!-- ALERTAS IMPORTANTES -->
+
+    <!-- GRÁFICO DE VENTAS Y MÓDULOS PRINCIPALES -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div id="alerts-container">
-                <!-- Alertas se cargan dinámicamente -->
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>Sistema actualizado:</strong> Todas las funciones web están operativas.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart-fill"></i> Ventas por Departamento</h6>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="chart-container" style="height: 350px; width: 100%;">
+                        <canvas id="departmentSalesChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- GRÁFICOS Y MÉTRICAS -->
+    <!-- FUNCIONES PRINCIPALES COMPACTAS -->
     <div class="row mb-4">
-        <!-- Gráfico de Ventas -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow">
-                <div class="card-header d-flex justify-content-between">
-                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Tendencia de Ventas (Últimos 7 días)</h5>
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-outline-secondary active" onclick="changeChartType('bar')">Barras</button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changeChartType('line')">Línea</button>
+        <div class="col-lg-6 mb-3">
+            <div class="compact-function-card">
+                <div class="d-flex align-items-center">
+                    <div class="function-icon primary me-3">
+                        <i class="bi bi-cart-plus"></i>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="salesChart"></canvas>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Nueva Venta</h6>
+                        <p class="mb-0 text-muted small">Registrar venta punto de venta</p>
                     </div>
+                    <button class="btn btn-primary btn-sm">Ir <i class="bi bi-arrow-right-short"></i></button>
                 </div>
             </div>
         </div>
 
-        <!-- Resumen Diario -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-calendar-day"></i> Resumen del Día</h5>
-                </div>
-                <div class="card-body">
-                    <div class="daily-summary">
-                        <div class="summary-item">
-                            <div class="summary-icon success">
-                                <i class="bi bi-receipt"></i>
-                            </div>
-                            <div class="summary-content">
-                                <h4 id="stat-transacciones-hoy">0</h4>
-                                <small>Transacciones</small>
-                            </div>
-                        </div>
-
-                        <div class="summary-item">
-                            <div class="summary-icon primary">
-                                <i class="bi bi-people"></i>
-                            </div>
-                            <div class="summary-content">
-                                <h4 id="stat-clientes-hoy">0</h4>
-                                <small>Clientes atendidos</small>
-                            </div>
-                        </div>
-
-                        <div class="summary-item">
-                            <div class="summary-icon info">
-                                <i class="bi bi-trophy"></i>
-                            </div>
-                            <div class="summary-content">
-                                <h4 id="stat-producto-top">-</h4>
-                                <small>Producto más vendido</small>
-                            </div>
-                        </div>
+        <div class="col-lg-6 mb-3">
+            <div class="compact-function-card">
+                <div class="d-flex align-items-center">
+                    <div class="function-icon success me-3">
+                        <i class="bi bi-box-plus"></i>
                     </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Agregar Producto</h6>
+                        <p class="mb-0 text-muted small">Nuevo ítem al inventario</p>
+                    </div>
+                    <button class="btn btn-success btn-sm">Ir <i class="bi bi-arrow-right-short"></i></button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ACCIONES RÁPIDAS Y MÓDULOS -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-rocket"></i> Acceso Rápido a Módulos</h5>
+        <div class="col-lg-6 mb-3">
+            <div class="compact-function-card">
+                <div class="d-flex align-items-center">
+                    <div class="function-icon info me-3">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Reportes de Ventas</h6>
+                        <p class="mb-0 text-muted small">Análisis y estadísticas</p>
+                    </div>
+                    <a href="/sales_reports" class="btn btn-info btn-sm">Ir <i class="bi bi-arrow-right-short"></i></a>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <!-- POS -->
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('pos_page') }}'">
-                                <div class="module-icon success">
-                                    <i class="bi bi-cart-check-fill"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Punto de Venta</h6>
-                                    <small>Realizar ventas rápidas</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
+            </div>
+        </div>
 
-                        <!-- Inventario -->
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('inventory_page') }}'">
-                                <div class="module-icon info">
-                                    <i class="bi bi-box-seam"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Inventario</h6>
-                                    <small>Gestionar productos</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Scanner -->
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('scanner_page') }}'">
-                                <div class="module-icon secondary">
-                                    <i class="bi bi-upc-scan"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Escáner</h6>
-                                    <small>Ingreso masivo de stock</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cotizaciones -->
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('quotations_page') }}'">
-                                <div class="module-icon primary">
-                                    <i class="bi bi-file-earmark-text"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Cotizaciones</h6>
-                                    <small>Crear ofertas</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
+        <div class="col-lg-6 mb-3">
+            <div class="compact-function-card">
+                <div class="d-flex align-items-center">
+                    <div class="function-icon warning me-3">
+                        <i class="bi bi-upc-scan"></i>
                     </div>
-
-                    <!-- Segunda fila -->
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('accounts_payable_page') }}'">
-                                <div class="module-icon warning">
-                                    <i class="bi bi-arrow-down-circle"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Cuentas por Pagar</h6>
-                                    <small>Proveedores</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="location.href='{{ url_for('accounts_receivable_page') }}'">
-                                <div class="module-icon success">
-                                    <i class="bi bi-arrow-up-circle"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Cuentas por Cobrar</h6>
-                                    <small>Clientes</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card" onclick="window.open('{{ url_for('print_test') }}', '_blank')">
-                                <div class="module-icon info">
-                                    <i class="bi bi-printer"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Test Ticket</h6>
-                                    <small>Impresión de prueba</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3 mb-3">
-                            <div class="module-card disabled">
-                                <div class="module-icon muted">
-                                    <i class="bi bi-gear"></i>
-                                </div>
-                                <div class="module-content">
-                                    <h6>Configuración</h6>
-                                    <small>Próximamente</small>
-                                </div>
-                                <div class="module-arrow">
-                                    <i class="bi bi-chevron-right text-muted"></i>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Escáner de Barras</h6>
+                        <p class="mb-0 text-muted small">Carga masiva de productos</p>
                     </div>
+                    <a href="/scanner" class="btn btn-warning btn-sm">Ir <i class="bi bi-arrow-right-short"></i></a>
                 </div>
             </div>
         </div>
     </div>
+
+
 </div>
 
 <!-- Estilos CSS para el nuevo dashboard -->
@@ -328,20 +192,21 @@
 
 .kpi-card {
     background: white;
-    border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-    border-left: 4px solid;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    border-left: 3px solid;
     display: flex;
     align-items: center;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-height: 90px;
 }
 
 .kpi-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
 }
 
 .kpi-card.primary { border-left-color: #007bff; background: linear-gradient(135deg, #007bff 0%, #6610f2 100%); color: white; }
@@ -355,35 +220,37 @@
 .kpi-card.warning .kpi-trend .trend-warning { color: #fff3cd; }
 
 .kpi-icon {
-    width: 60px;
-    height: 60px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     background: rgba(255,255,255,0.2);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
-    margin-right: 20px;
+    font-size: 1.2rem;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
 .kpi-content h3 {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 600;
     margin: 0;
-    line-height: 1;
+    line-height: 1.1;
+    word-break: break-word;
 }
 
 .kpi-label {
-    font-size: 0.9rem;
-    margin: 5px 0;
-    opacity: 0.8;
+    font-size: 0.8rem;
+    margin: 4px 0;
+    opacity: 0.9;
 }
 
 .kpi-trend {
     display: flex;
     align-items: center;
-    font-size: 0.8rem;
-    margin-top: 5px;
+    font-size: 0.7rem;
+    margin-top: 3px;
 }
 
 .trend-up { color: #28a745; margin-right: 5px; }
@@ -504,6 +371,38 @@
     position: relative;
     height: 400px;
 }
+
+/* Tarjetas compactas para funciones principales */
+.compact-function-card {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.compact-function-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.function-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.function-icon.primary { background: linear-gradient(45deg, #007bff, #6610f2); }
+.function-icon.success { background: linear-gradient(45deg, #28a745, #20c997); }
+.function-icon.info { background: linear-gradient(45deg, #17a2b8, #6f42c1); }
+.function-icon.warning { background: linear-gradient(45deg, #ffc107, #fd7e14); }
 </style>
 {% endblock %}
 
@@ -517,9 +416,14 @@
         fetch('/api/stats')
             .then(response => response.json())
             .then(data => {
-                document.getElementById('stat-total-productos').textContent = data.total_productos;
-                document.getElementById('stat-valor-inventario').textContent = currencyFormatter.format(data.valor_inventario);
-                document.getElementById('stat-total-ventas').textContent = data.total_ventas;
+                if (data.success) {
+                    document.getElementById('stat-total-productos').textContent = data.stats.total_productos || 0;
+                    document.getElementById('stat-valor-inventario').textContent = currencyFormatter.format(data.stats.valor_inventario || 0);
+                    document.getElementById('stat-ventas-hoy').textContent = currencyFormatter.format(data.stats.ventas_hoy || 0);
+                    document.getElementById('stat-stock-bajo').textContent = data.stats.productos_stock_bajo || 0;
+                } else {
+                    console.error("Error al obtener estadísticas:", data.error);
+                }
             }).catch(error => console.error('Error al refrescar estadísticas:', error));
     }
 
@@ -537,6 +441,58 @@
                     options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
                 });
             }).catch(error => console.error('Error al cargar datos del gráfico:', error));
+    }
+
+    function fetchDepartmentSalesData() {
+        fetch('/api/sales_by_department')
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) return;
+
+                const labels = result.data.map(item => item.departamento);
+                const data = result.data.map(item => item.total);
+
+                const chartCtx = document.getElementById('departmentSalesChart').getContext('2d');
+                new Chart(chartCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ventas',
+                            data: data,
+                            backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }).catch(error => console.error('Error al cargar datos de ventas por departamento:', error));
+    }
+
+    function fetchDepartmentSalesData() {
+        fetch('/api/sales_by_department')
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) return;
+
+                const labels = result.data.map(item => item.departamento);
+                const data = result.data.map(item => item.total);
+
+                const chartCtx = document.getElementById('departmentSalesChart').getContext('2d');
+                new Chart(chartCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ventas',
+                            data: data,
+                            backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#17a2b8', '#6f42c1'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }).catch(error => console.error('Error al cargar datos de ventas por departamento:', error));
     }
 
     // Función para cambiar tipo de gráfico
@@ -565,10 +521,16 @@
         document.getElementById('current-date').textContent = `Hoy es ${formattedDate}`;
     }
 
+    // === INICIALIZACIÓN ===
     document.addEventListener('DOMContentLoaded', () => {
         fetchStats();
-        fetchSalesChartData();
+        
+        fetchDepartmentSalesData();
         updateCurrentDate();
+
+        // Conectar botones compactos a las páginas
+        document.querySelector('.compact-function-card .btn-primary').onclick = () => location.href = '/pos'
+        document.querySelector('.compact-function-card .btn-success').onclick = () => location.href = '/inventory'
     });
 </script>
 {% endblock %}

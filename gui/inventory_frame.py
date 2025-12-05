@@ -9,15 +9,15 @@ class InventoryFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        # --- Configuración del Layout del Frame Principal ---
+        # --- Configuración del Layout ---
         self.pack(fill="both", expand=True)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1) # Cambiado a 2 para dar espacio a los nuevos botones
+        self.grid_rowconfigure(3, weight=1) # Fila 3 para la tabla, que se expandirá
 
         # --- Frame para Controles (Entradas y Botones) ---
         controls_frame = ctk.CTkFrame(self)
         controls_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-
+        
         # --- Widgets de entrada en el nuevo orden ---
         self.codigo_entry = ctk.CTkEntry(controls_frame, placeholder_text="Código de Barras")
         self.codigo_entry.pack(side="left", padx=5, pady=5, expand=True, fill="x")
@@ -46,7 +46,7 @@ class InventoryFrame(ctk.CTkFrame):
         self.unidad_medida_menu = ctk.CTkOptionMenu(controls_frame, values=self.unidad_medidas)
         self.unidad_medida_menu.pack(side="left", padx=5, pady=5)
         self.unidad_medida_menu.set("Unidad")  # Valor por defecto
-
+        
         # --- Treeview para mostrar los productos ---
         style = ttk.Style()
         style.theme_use("default")
@@ -66,7 +66,7 @@ class InventoryFrame(ctk.CTkFrame):
                   background=[('active', '#3484F0')])
 
         tree_frame = ctk.CTkFrame(self)
-        tree_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew") # Cambiado a fila 2
+        tree_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nsew") # Fila 3
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
 
@@ -102,11 +102,11 @@ class InventoryFrame(ctk.CTkFrame):
         self.tree.configure(yscrollcommand=scrollbar.set)
 
         # Configurar un "tag" para resaltar filas en rojo
-        self.tree.tag_configure('low_stock', background='#8B0000') # Un rojo oscuro que se ve bien en el tema
+        self.tree.tag_configure('low_stock', background='#8B0000')
 
         # --- Frame para botones de acción (Editar, Eliminar) ---
         action_buttons_frame = ctk.CTkFrame(self)
-        action_buttons_frame.grid(row=1, column=0, padx=10, pady=(0, 5), sticky="ew")
+        action_buttons_frame.grid(row=2, column=0, padx=10, pady=(5, 5), sticky="ew")
 
         self.add_button_second = ctk.CTkButton(action_buttons_frame, text="Agregar Producto", fg_color="#28a745", hover_color="#218838", command=self.agregar_producto)
         self.add_button_second.pack(side="left", padx=5, pady=5)
@@ -116,6 +116,9 @@ class InventoryFrame(ctk.CTkFrame):
 
         self.delete_button = ctk.CTkButton(action_buttons_frame, text="Eliminar Seleccionado", fg_color="#D32F2F", hover_color="#B71C1C", command=self.eliminar_producto_seleccionado)
         self.delete_button.pack(side="left", padx=5, pady=5)
+
+        self.clean_duplicates_button = ctk.CTkButton(action_buttons_frame, text="Limpiar Duplicados", fg_color="#ff9800", hover_color="#fb8c00", text_color="black", command=self.limpiar_duplicados)
+        self.clean_duplicates_button.pack(side="left", padx=15, pady=5)
 
         # Separador visual
         ctk.CTkLabel(action_buttons_frame, text="|").pack(side="left", padx=10)
@@ -128,15 +131,134 @@ class InventoryFrame(ctk.CTkFrame):
 
         self.export_pdf_button = ctk.CTkButton(action_buttons_frame, text="Exportar a PDF", command=self.exportar_pdf)
         self.export_pdf_button.pack(side="left", padx=5, pady=5)
+      
+        # Botón de Reporte de Stock Bajo
+        self.low_stock_button = ctk.CTkButton(action_buttons_frame, text="Reporte Stock Bajo", command=self.mostrar_reporte_stock_bajo)
+        self.low_stock_button.pack(side="left", padx=5, pady=5)
 
+        # Checkbox para seleccionar todo
+        self.select_all_var = ctk.StringVar(value="off")
+        self.select_all_checkbox = ctk.CTkCheckBox(action_buttons_frame, text="Seleccionar Todo", variable=self.select_all_var, onvalue="on", offvalue="off", command=self.toggle_select_all)
+        self.select_all_checkbox.pack(side="right", padx=10, pady=5)
+        
+        # --- Frame para Acciones Masivas (inicialmente oculto) ---
+        self.bulk_actions_frame = ctk.CTkFrame(self, fg_color="#2B2B2B")
+        # No se usa .grid() aquí, se mostrará/ocultará dinámicamente
+        
+        ctk.CTkLabel(self.bulk_actions_frame, text="Acciones para la selección:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(10, 5), pady=10)
+        
+        self.bulk_department_menu = ctk.CTkOptionMenu(self.bulk_actions_frame, values=self.departamentos)
+        self.bulk_department_menu.pack(side="left", padx=5, pady=10)
+        
+        self.apply_bulk_button = ctk.CTkButton(
+            self.bulk_actions_frame, 
+            text="Aplicar Departamento", 
+            command=self.aplicar_cambio_departamento_masivo
+        )
+        self.apply_bulk_button.pack(side="left", padx=10, pady=10)
+        
+        # --- Frame de Búsqueda ---
+        self.search_entry = ctk.CTkEntry(self, placeholder_text="Buscar por Código, Nombre o Departamento...")
+        self.search_entry.grid(row=1, column=0, padx=10, pady=(5,0), sticky="ew")
+        self.search_entry.bind("<KeyRelease>", self.buscar_productos)
+
+        # Vincular el evento de selección del Treeview
+        self.tree.bind("<<TreeviewSelect>>", self.on_item_select)
 
         self.cargar_productos()
-        # Dentro de __init__ en InventoryFrame
-        self.low_stock_button = ctk.CTkButton(self, text="Reporte Stock Bajo", command=self.mostrar_reporte_stock_bajo)
-        self.low_stock_button.pack(pady=10, padx=20, side="left") # O donde corresponda en tu layout
 
         # Añade este método a tu clase InventoryFrame
-    
+    def toggle_select_all(self):
+        """Selecciona o deselecciona todos los items en el treeview."""
+        if self.select_all_var.get() == "on":
+            self.tree.selection_set(self.tree.get_children())
+        else:
+            self.tree.selection_remove(self.tree.get_children())
+
+    def on_item_select(self, event):
+        """Muestra u oculta el panel de acciones masivas según la selección."""
+        if self.tree.selection():
+            # Si hay algo seleccionado, muestra el panel
+            self.bulk_actions_frame.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
+        else:
+            # Si no hay nada seleccionado, oculta el panel
+            self.bulk_actions_frame.grid_remove()
+
+    def aplicar_cambio_departamento_masivo(self):
+        """Aplica el cambio de departamento a todos los productos seleccionados."""
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("Sin selección", "No hay productos seleccionados.", parent=self)
+            return
+
+        nuevo_departamento = self.bulk_department_menu.get()
+        
+        confirm_msg = (f"¿Está seguro de que desea cambiar el departamento a '{nuevo_departamento}' "
+                       f"para los {len(selected_items)} productos seleccionados?")
+
+        if not messagebox.askyesno("Confirmar Cambio Masivo", confirm_msg, parent=self):
+            return
+
+        product_ids = []
+        for item_id in selected_items:
+            # El ID del producto está en la primera columna ('ID')
+            product_db_id = self.tree.item(item_id, 'values')[0]
+            product_ids.append(product_db_id)
+
+        try:
+            updated_count = database.actualizar_departamento_masivo(product_ids, nuevo_departamento)
+            messagebox.showinfo("Éxito", f"{updated_count} productos han sido actualizados al departamento '{nuevo_departamento}'.", parent=self)
+            
+            # Recargar la tabla para ver los cambios
+            self.cargar_productos()
+            self.on_item_select(None) # Ocultar el panel de acciones
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudieron actualizar los productos: {e}", parent=self)
+
+    def limpiar_duplicados(self):
+        """
+        Busca productos con códigos de barras duplicados y elimina las copias,
+        conservando solo una entrada por cada código.
+        """
+        if not messagebox.askyesno("Confirmar Limpieza de Duplicados",
+                                   "Esta acción buscará productos con códigos de barras duplicados y eliminará las copias, conservando solo una entrada por cada código.\n\n"
+                                   "Se recomienda hacer un backup antes de proceder.\n"
+                                   "¡Esta acción no se puede deshacer!\n\n"
+                                   "¿Desea continuar?", parent=self):
+            return
+
+        try:
+            todos_los_productos = database.obtener_productos()
+            
+            codigos_vistos = {}  # { 'codigo_barras': producto_a_conservar }
+            duplicados_a_eliminar = []  # Lista de IDs a eliminar
+
+            for producto in todos_los_productos:
+                codigo = producto.get('codigo_barras')
+                if not codigo:
+                    continue  # Omitir productos sin código de barras
+
+                if codigo in codigos_vistos:
+                    # Ya vimos este código, hay que decidir cuál eliminar
+                    producto_existente = codigos_vistos[codigo]
+                    
+                    # Criterio: Conservar el que tenga más stock. Si es igual, el más reciente (mayor ID).
+                    if producto.get('stock', 0) > producto_existente.get('stock', 0):
+                        duplicados_a_eliminar.append(producto_existente['id'])
+                        codigos_vistos[codigo] = producto # El nuevo es el que se queda
+                    else:
+                        duplicados_a_eliminar.append(producto['id'])
+                else:
+                    codigos_vistos[codigo] = producto
+
+            for prod_id in duplicados_a_eliminar:
+                database.eliminar_producto(prod_id)
+
+            messagebox.showinfo("Limpieza Completada", f"Se encontraron y eliminaron {len(duplicados_a_eliminar)} productos duplicados.", parent=self)
+            self.cargar_productos() # Recargar la tabla
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error durante la limpieza de duplicados:\n{e}", parent=self)
+
     def mostrar_reporte_stock_bajo(self):
         # Crear una nueva ventana emergente (Toplevel)
         report_window = ctk.CTkToplevel(self)
@@ -175,21 +297,29 @@ class InventoryFrame(ctk.CTkFrame):
         
         tree.pack(fill="both", expand=True, padx=10, pady=10)
     
-    def cargar_productos(self):
+    def cargar_productos(self, productos_a_cargar=None):
+        """
+        Carga productos en el treeview.
+        Si no se proporcionan productos, obtiene todos de la base de datos.
+        """
         # Limpiar la tabla antes de cargar nuevos datos
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Obtener productos de la BD y mostrarlos
-        productos = database.obtener_productos() # Esta función devuelve una lista de diccionarios
+        # Si no se pasa una lista de productos, obtener todos
+        if productos_a_cargar is None:
+            productos = database.obtener_productos()
+        else:
+            productos = productos_a_cargar
+
         for producto in productos:
             # Extraer valores del diccionario, con valores por defecto si no existen
             valores_ordenados = (
                 producto.get('id', ''),
                 producto.get('codigo_barras', ''),
                 producto.get('nombre', ''),
-                producto.get('costo', 0.0),
-                producto.get('precio', 0.0),
+                f"{producto.get('costo', 0.0):.2f}",
+                f"{producto.get('precio', 0.0):.2f}",
                 producto.get('stock', 0),
                 producto.get('stock_minimo', 0),
                 producto.get('departamento', '')
@@ -202,6 +332,27 @@ class InventoryFrame(ctk.CTkFrame):
                 self.tree.insert("", "end", values=valores_ordenados, tags=('low_stock',))
             else:
                 self.tree.insert("", "end", values=valores_ordenados)
+
+    def buscar_productos(self, event=None):
+        """Filtra los productos en la tabla según el término de búsqueda."""
+        termino = self.search_entry.get().lower()
+        
+        if not termino:
+            self.cargar_productos()
+            return
+
+        productos_todos = database.obtener_productos()
+        productos_filtrados = []
+
+        for producto in productos_todos:
+            codigo = str(producto.get('codigo_barras', '')).lower()
+            nombre = str(producto.get('nombre', '')).lower()
+            depto = str(producto.get('departamento', '')).lower()
+
+            if termino in codigo or termino in nombre or termino in depto:
+                productos_filtrados.append(producto)
+        
+        self.cargar_productos(productos_filtrados)
 
 
     def agregar_producto(self):
@@ -230,8 +381,12 @@ class InventoryFrame(ctk.CTkFrame):
 
         # Llamar a la función de la base de datos
         try:
+            # Esta función ahora maneja la lógica online/offline internamente
             database.agregar_producto(codigo, nombre, costo_val, precio_val, stock_val, stock_minimo_val, departamento, unidad_medida)
-            messagebox.showinfo("Éxito", "Producto agregado correctamente.")
+            
+            # El mensaje de éxito es genérico, ya que puede ser online u offline
+            messagebox.showinfo("Éxito", "Producto agregado/registrado para sincronización.")
+            
             self.cargar_productos() # Recargar la lista
             # Limpiar campos de entrada
             self.codigo_entry.delete(0, "end")
@@ -258,21 +413,38 @@ class InventoryFrame(ctk.CTkFrame):
         EditWindow(self.master, product_data, self)
 
     def eliminar_producto_seleccionado(self):
-        selected_item = self.tree.selection()
-        if not selected_item:
+        selected_items = self.tree.selection()
+        if not selected_items:
             messagebox.showwarning("Sin selección", "Por favor, seleccione un producto de la tabla para eliminar.")
             return
 
-        product_data = self.tree.item(selected_item[0])['values']
-        product_id = product_data[0]
+        if len(selected_items) == 1:
+            # Si es solo uno, el mensaje es singular
+            product_data = self.tree.item(selected_items[0])['values']
+            product_name = product_data[2]
+            confirm_message = f"¿Está seguro de que desea eliminar el producto '{product_name}'?"
+        else:
+            # Si son varios, el mensaje es plural
+            confirm_message = f"¿Está seguro de que desea eliminar los {len(selected_items)} productos seleccionados?"
 
-        if messagebox.askyesno("Confirmar Eliminación", f"¿Está seguro de que desea eliminar el producto '{product_data[2]}'?"):
-            try:
-                database.eliminar_producto(product_id)
-                messagebox.showinfo("Éxito", "Producto eliminado correctamente.")
+        if messagebox.askyesno("Confirmar Eliminación", confirm_message, parent=self):
+            deleted_count = 0
+            failed_count = 0
+            for item_id in selected_items:
+                product_data = self.tree.item(item_id)['values']
+                product_id = product_data[0]
+                try:
+                    database.eliminar_producto(product_id)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Error al eliminar producto {product_id}: {e}")
+                    failed_count += 1
+            
+            if deleted_count > 0:
+                messagebox.showinfo("Éxito", f"{deleted_count} producto(s) eliminado(s) correctamente." + (f"\nFallaron: {failed_count}." if failed_count > 0 else ""), parent=self)
                 self.cargar_productos()
-            except Exception as e:
-                messagebox.showerror("Error en la Base de Datos", f"No se pudo eliminar el producto: {e}")
+            else:
+                messagebox.showerror("Error", "No se pudo eliminar ningún producto.", parent=self)
 
     def exportar_csv(self):
         filepath = filedialog.asksaveasfilename(defaultextension=".csv",
@@ -326,7 +498,7 @@ class InventoryFrame(ctk.CTkFrame):
 
             pdf.set_font("Arial", "B", 10)
             # Anchos de celda (ajustar según necesidad)
-            col_widths = [15, 40, 70, 30, 20, 15]
+            col_widths = [20, 35, 70, 30, 20, 15]
             for i, header in enumerate(headers):
                 pdf.cell(col_widths[i], 10, header, 1, 0, "C")
             pdf.ln()

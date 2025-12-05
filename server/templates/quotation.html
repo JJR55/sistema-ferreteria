@@ -1,67 +1,74 @@
 {% extends "layout.html" %}
 
-{% block title %}Cotizaciones - Sistema Ferretería{% endblock %}
+{% block title %}Gestión de Cotizaciones{% endblock %}
 
-{% block page_title %}<i class="bi bi-file-earmark-text"></i> Sistema de Cotizaciones{% endblock %}
+{% block page_title %}<i class="bi bi-file-earmark-text"></i> Gestión de Cotizaciones{% endblock %}
 
 {% block breadcrumb %}Gestión de Cotizaciones{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <!-- Panel izquierdo: creación de cotización -->
-        <div class="col-lg-8">
-            <div class="card shadow-lg">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Nueva Cotización</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Selector de cliente -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Cliente</label>
-                        <div class="input-group">
-                            <input type="text" id="client-search" class="form-control" placeholder="Buscar cliente por nombre o RNC...">
-                            <span class="input-group-text"><i class="bi bi-person-lines-fill"></i></span>
-                        </div>
-                        <div id="client-results" class="mt-2"></div>
-                        <div id="selected-client" class="mt-2 d-none">
-                            <div class="alert alert-success">
-                                <strong>Cliente seleccionado:</strong> <span id="client-name"></span>
-                                <button class="btn btn-sm btn-outline-danger ms-2" id="clear-client">Cambiar</button>
-                            </div>
-                        </div>
-                    </div>
+    <ul class="nav nav-tabs" id="quotationTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="new-quotation-tab" data-bs-toggle="tab" data-bs-target="#new-quotation-pane" type="button" role="tab" aria-controls="new-quotation-pane" aria-selected="true"><i class="bi bi-plus-circle"></i> Nueva Cotización</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-pane" type="button" role="tab" aria-controls="history-pane" aria-selected="false"><i class="bi bi-clock-history"></i> Historial</button>
+        </li>
+    </ul>
 
-                    <!-- Búsqueda de productos y escaneo -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Agregar Productos</label>
-
-                        <!-- Campo de escaneo de código de barras -->
-                        <div class="mb-3">
+    <div class="tab-content" id="quotationTabsContent">
+        <!-- Pestaña de Nueva Cotización -->
+        <div class="tab-pane fade show active" id="new-quotation-pane" role="tabpanel" aria-labelledby="new-quotation-tab">
+            <div class="row mt-3 g-4">
+                <!-- Columna Izquierda: Búsqueda y Cliente -->
+                <div class="col-lg-5">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-person-plus"></i> Cliente</h5>
+                        </div>
+                        <div class="card-body">
                             <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
-                                <input type="text" id="barcode-input" class="form-control barcode-input-auto" placeholder="Escanear código de barras..." maxlength="20">
+                                <input type="text" id="client-search" class="form-control" placeholder="Buscar cliente por nombre o RNC...">
+                                <span class="input-group-text"><i class="bi bi-person-lines-fill"></i></span>
                             </div>
-                            <small class="text-muted">Escanee automáticamente</small>
+                            <div id="client-results" class="search-results mt-1"></div>
+                            <div id="selected-client" class="mt-2 d-none">
+                                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Cliente:</strong> <span id="client-name"></span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" id="clear-client" title="Quitar cliente"><i class="bi bi-x"></i></button>
+                                </div>
+                            </div>
                         </div>
-
-                        <!-- Búsqueda manual -->
-                        <div class="input-group">
-                            <input type="text" id="product-search" class="form-control" placeholder="Buscar productos por nombre...">
-                            <button class="btn btn-outline-secondary" id="search-product-btn" type="button">
-                                <i class="bi bi-search"></i> Buscar
-                            </button>
-                        </div>
-                        <div id="product-results" class="mt-2"></div>
                     </div>
 
-                    <!-- Tabla de productos añadidos -->
-                    <div class="card border">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">Productos en la Cotización</h6>
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-search"></i> Agregar Productos</h5>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
+                        <div class="card-body">
+                            <div class="input-group">
+                                <input type="text" id="product-search" class="form-control" placeholder="Buscar productos...">
+                                <button class="btn btn-outline-primary" id="scan-btn-quotation" type="button" data-bs-toggle="modal" data-bs-target="#scannerModalQuotation" title="Escanear con cámara">
+                                    <i class="bi bi-upc-scan"></i>
+                                </button>
+                            </div>
+                            <div id="product-results" class="search-results mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Resumen y Lista de Productos -->
+                <div class="col-lg-7">
+                    <div class="card shadow-lg">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-receipt"></i> Resumen de Cotización</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Lista de productos -->
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-light">
                                         <tr>
@@ -69,11 +76,11 @@
                                             <th>Cant.</th>
                                             <th>Precio</th>
                                             <th>Subtotal</th>
-                                            <th>Acciones</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody id="quotation-items">
-                                        <!-- Productos se insertan aquí dinámicamente -->
+                                        <!-- Productos se insertan aquí -->
                                     </tbody>
                                 </table>
                             </div>
@@ -81,87 +88,84 @@
                                 <i class="bi bi-cart-x display-4"></i>
                                 <p class="mt-2">No hay productos en la cotización</p>
                             </div>
+
+                            <!-- Resumen Financiero -->
+                            <div class="mt-4 border-top pt-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span id="subtotal-display">RD$ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>ITBIS (18%):</span>
+                                    <span id="itbis-display">RD$ 0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between fs-4 fw-bold text-success">
+                                    <span>Total:</span>
+                                    <span id="total-display">RD$ 0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Opciones y Acciones -->
+                            <div class="mt-4 border-top pt-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="validity-days" class="form-label">Validez de la Cotización</label>
+                                        <select id="validity-days" class="form-select">
+                                            <option value="15" selected>15 días</option>
+                                            <option value="30">30 días</option>
+                                            <option value="45">45 días</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-success" id="save-quotation-btn">
+                                                <i class="bi bi-save"></i> Guardar Cotización
+                                            </button>
+                                            <button class="btn btn-outline-danger" id="clear-quotation-btn">
+                                                <i class="bi bi-x-circle"></i> Limpiar Todo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Panel derecho: resumen y acciones -->
-        <div class="col-lg-4">
-            <div class="card shadow-lg sticky-top" style="top: 20px;">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Resumen de Cotización</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Resumen de totales -->
-                    <div class="d-grid gap-3">
-                        <div class="text-center">
-                            <div class="fs-5 fw-bold text-muted mb-3">Total de Items</div>
-                            <div class="display-6 fw-bold text-primary" id="total-items">0</div>
+        <!-- Pestaña de Historial -->
+        <div class="tab-pane fade" id="history-pane" role="tabpanel" aria-labelledby="history-tab">
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card shadow-lg">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cotizaciones</h5>
                         </div>
-
-                        <div class="border-top pt-3">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Subtotal Base:</span>
-                                <span class="fw-bold" id="subtotal-display">RD$ 0.00</span>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Fecha</th>
+                                            <th>Cliente</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                            <th>Válida hasta</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="quotations-history">
+                                        <!-- Cotizaciones se insertan aquí dinámicamente -->
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>ITBIS (18%):</span>
-                                <span class="fw-bold" id="itbis-display">RD$ 0.00</span>
-                            </div>
-                            <hr>
-                            <div class="d-flex justify-content-between fs-4 fw-bold">
-                                <span>Total:</span>
-                                <span class="text-success" id="total-display">RD$ 0.00</span>
+                            <div id="empty-history" class="text-center p-4 text-muted">
+                                <i class="bi bi-file-earmark-x display-4"></i>
+                                <p class="mt-2">No hay cotizaciones guardadas</p>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Acciones -->
-                    <div class="d-grid gap-2 mt-4">
-                        <button class="btn btn-outline-primary" id="save-quotation-btn">
-                            <i class="bi bi-save"></i> Guardar Cotización
-                        </button>
-                        <button class="btn btn-success btn-lg" id="generate-pdf-btn">
-                            <i class="bi bi-file-earmark-pdf"></i> Generar PDF
-                        </button>
-                        <button class="btn btn-danger btn-lg" id="clear-quotation-btn">
-                            <i class="bi bi-x-circle"></i> Limpiar Todo
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Historial de cotizaciones -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-lg">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cotizaciones</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Total</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="quotations-history">
-                                <!-- Cotizaciones se insertan aquí dinámicamente -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="empty-history" class="text-center p-4 text-muted">
-                        <i class="bi bi-file-earmark-x display-4"></i>
-                        <p class="mt-2">No hay cotizaciones guardadas</p>
                     </div>
                 </div>
             </div>
@@ -188,10 +192,37 @@
     </div>
 </div>
 
+<!-- Modal del Escáner para Cotizaciones -->
+<div class="modal fade" id="scannerModalQuotation" tabindex="-1" aria-labelledby="scannerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scannerModalLabel"><i class="bi bi-camera-video"></i> Escáner de Productos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted text-center">Apunte la cámara al código de barras del producto.</p>
+        <div id="quotation-scanner-viewport" class="viewport mx-auto" style="max-width: 320px; min-height: 240px; position: relative; background: #000; border-radius: 8px; overflow: hidden;">
+            <!-- QuaggaJS se adjuntará aquí -->
+        </div>
+        <div id="quotation-scanner-status" class="mt-2 text-center text-muted"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+    // Cargar historial cuando se muestra la pestaña
+    document.getElementById('history-tab').addEventListener('shown.bs.tab', function () {
+        loadQuotationsHistory();
+
+    });
     let quotationItems = [];
     let selectedClient = null;
     let selectedProductForQuantity = null;
@@ -239,14 +270,6 @@
         updateSummary();
     }
 
-    function updateQuantity(index, newQuantity) {
-        const qty = parseInt(newQuantity);
-        if (qty > 0) {
-            quotationItems[index].cantidad = qty;
-            renderQuotationItems();
-        }
-    }
-
     function removeItem(index) {
         quotationItems.splice(index, 1);
         renderQuotationItems();
@@ -273,10 +296,13 @@
                     <td>${q.id}</td>
                     <td>${new Date(q.fecha).toLocaleDateString('es-DO')}</td>
                     <td>${q.cliente || 'Consumidor Final'}</td>
-                    <td>${formatCurrency(q.total || 0)}</td>
+                    <td class="fw-bold">${formatCurrency(q.total || 0)}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="viewQuotation(${q.id})">
                             <i class="bi bi-eye"></i> Ver
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="loadQuotationInPOS('${q.id}')" title="Cargar en Punto de Venta">
+                            <i class="bi bi-box-arrow-up-right"></i>
                         </button>
                     </td>
                 `;
@@ -289,6 +315,29 @@
 
     function viewQuotation(quotationId) {
         window.open(`/api/quotation/generate_pdf/${quotationId}`, '_blank');
+    }
+
+    async function loadQuotationInPOS(quotationId) {
+        if (!confirm('¿Desea cargar esta cotización en el Punto de Venta? Se limpiará cualquier venta en curso.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/quotation/details/${quotationId}`);
+            const result = await response.json();
+
+            if (result.success) {
+                // Guardar los datos en sessionStorage para que la página del POS los lea
+                sessionStorage.setItem('quotationToLoad', JSON.stringify(result.data));
+                // Redirigir al POS
+                window.location.href = "{{ url_for('pos_page') }}";
+            } else {
+                alert('Error al cargar los detalles de la cotización: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error de red:', error);
+            alert('Error de red al intentar cargar la cotización.');
+        }
     }
 
     // Event listeners
@@ -338,10 +387,19 @@
     document.getElementById('confirm-quantity').addEventListener('click', () => {
         const quantity = parseInt(document.getElementById('quantity-input').value);
         if (quantity > 0 && selectedProductForQuantity) {
-            quotationItems.push({
-                ...selectedProductForQuantity,
-                cantidad: quantity
-            });
+            // Verificar si el producto ya existe en la cotización
+            const existingItem = quotationItems.find(item => item.id === selectedProductForQuantity.id);
+
+            if (existingItem) {
+                // Si existe, solo incrementar la cantidad
+                existingItem.cantidad += quantity;
+            } else {
+                // Si no existe, agregarlo como nuevo
+                quotationItems.push({
+                    ...selectedProductForQuantity,
+                    cantidad: quantity
+                });
+            }
             renderQuotationItems();
         }
         bootstrap.Modal.getInstance(document.getElementById('quantityModal')).hide();
@@ -397,6 +455,8 @@
             alert('Agregue productos a la cotización');
             return;
         }
+        
+        const validityDays = document.getElementById('validity-days').value;
 
         try {
             const response = await fetch('/api/quotation/save', {
@@ -404,7 +464,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     items: quotationItems,
-                    client_id: selectedClient ? selectedClient._id : null
+                    client_id: selectedClient ? selectedClient._id : null,
+                    validez_dias: parseInt(validityDays)
                 })
             });
             const result = await response.json();
@@ -585,5 +646,81 @@
     // Inicialización
     renderQuotationItems();
     loadQuotationsHistory();
+
+    // --- LÓGICA DEL ESCÁNER EN MODAL ---
+    const scannerModalQuotation = document.getElementById('scannerModalQuotation');
+    if (scannerModalQuotation) {
+        const quotationScanner = (function() {
+            let isScannerActive = false;
+            let lastScannedCode = null;
+            const viewport = document.getElementById('quotation-scanner-viewport');
+            const statusEl = document.getElementById('quotation-scanner-status');
+
+            function updateStatus(message, type = 'secondary') {
+                if (statusEl) statusEl.innerHTML = `<i class="bi bi-circle-fill text-${type}"></i> ${message}`;
+            }
+
+            const onDetected = (result) => {
+                const code = result.codeResult.code;
+                if (code === lastScannedCode) return;
+
+                lastScannedCode = code;
+                updateStatus('Código detectado, procesando...', 'info');
+                processBarcodeScan(code); // Reutilizamos la función principal
+
+                // Cerrar modal y resetear después de un escaneo exitoso
+                setTimeout(() => {
+                    const modalInstance = bootstrap.Modal.getInstance(scannerModalQuotation);
+                    if (modalInstance) modalInstance.hide();
+                }, 500);
+
+                setTimeout(() => { lastScannedCode = null; }, 1500);
+            };
+
+            function init() {
+                if (isScannerActive) return;
+                updateStatus('Iniciando cámara...', 'warning');
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: viewport,
+                        constraints: { width: { min: 320 }, height: { min: 240 }, facingMode: "environment" },
+                    },
+                    decoder: { readers: ["ean_reader", "code_128_reader", "upc_reader"] },
+                    locate: true,
+                }, function(err) {
+                    if (err) {
+                        console.error("Error Quagga:", err);
+                        updateStatus('Error al iniciar cámara', 'danger');
+                        return;
+                    }
+                    Quagga.start();
+                    isScannerActive = true;
+                    updateStatus('Escáner activo', 'primary');
+                });
+                Quagga.onDetected(onDetected);
+            }
+
+            function stop() {
+                if (isScannerActive) {
+                    Quagga.offDetected(onDetected);
+                    Quagga.stop();
+                    isScannerActive = false;
+                    updateStatus('Escáner detenido', 'secondary');
+                }
+            }
+
+            return { init, stop };
+        })();
+
+        scannerModalQuotation.addEventListener('shown.bs.modal', () => {
+            quotationScanner.init();
+        });
+
+        scannerModalQuotation.addEventListener('hide.bs.modal', () => {
+            quotationScanner.stop();
+        });
+    }
 </script>
 {% endblock %}

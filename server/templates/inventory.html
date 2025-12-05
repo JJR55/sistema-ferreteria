@@ -2,108 +2,114 @@
 
 {% block title %}Inventario - Sistema Ferretería{% endblock %}
 
-{% block page_title %}<i class="bi bi-box-seam"></i> Gestión de Inventario{% endblock %}
+{% block page_title %}🗂️ Gestión de Inventario{% endblock %}
 
-{% block breadcrumb %}Control de Productos{% endblock %}
+{% block breadcrumb %}Inventario{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header simple -->
-    <div class="row mb-4">
+    <!-- FUNCIONES - IMPORTAR/EXPORTAR (ARRIBA) -->
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3 class="mb-0">
-                    <i class="bi bi-box-seam-fill text-primary"></i> Gestión de Inventario
-                </h3>
-                <small class="text-muted">Sistema de control de productos</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toolbar simplificado -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="row g-2 align-items-center">
-                        <!-- Botones de acción principales -->
-                        <div class="col-xl-8 col-lg-7">
-                            <div class="d-flex flex-wrap gap-2">
-                                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#productModal" id="add-product-btn">
-                                    <i class="bi bi-plus-circle-fill"></i> Agregar Producto
-                                </button>
-                                <a href="{{ url_for('scanner_page') }}" class="btn btn-outline-secondary">
-                                    <i class="bi bi-upc-scan"></i> Escáner de Barras
-                                </a>
-                                <button class="btn btn-outline-warning" id="low-stock-btn">
-                                    <i class="bi bi-exclamation-triangle"></i> Stock Bajo
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Botones de importación/exportación -->
-                        <div class="col-xl-4 col-lg-5">
-                            <div class="d-flex justify-content-end flex-wrap gap-2">
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="bi bi-arrow-up-circle"></i> Importar
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</button></li>
-                                    </ul>
-                                </div>
-
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="bi bi-arrow-down-circle"></i> Exportar
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#" id="export-csv-btn"><i class="bi bi-filetype-csv"></i> CSV Completo</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Completo</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="#" id="export-low-stock-csv-btn"><i class="bi bi-filetype-csv"></i> CSV Stock Bajo</a></li>
-                                        <li><a class="dropdown-item" href="#" id="export-low-stock-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Stock Bajo</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="d-flex justify-content-end gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-arrow-up-circle"></i> Importar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</button></li>
+                    </ul>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-arrow-down-circle"></i> Exportar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="export-csv-btn"><i class="bi bi-filetype-csv"></i> Todo</a></li>
+                        <li><a class="dropdown-item" href="#" id="export-low-stock-csv-btn"><i class="bi bi-filetype-csv"></i> Stock Bajo</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="export-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Completo</a></li>
+                        <li><a class="dropdown-item" href="#" id="export-low-stock-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Stock Bajo</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Panel de búsqueda y filtros -->
+    <!-- TOOLBAR PRINCIPAL -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-lg-8">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" id="inventory-search" class="form-control" placeholder="Buscar por nombre, código...">
-                                <button class="btn btn-outline-secondary" id="clear-search-btn" title="Limpiar búsqueda">
-                                    <i class="bi bi-x-circle"></i>
+                    <div class="row g-3 align-items-center">
+                        <!-- Botones de acción principales -->
+                        <div class="col-xl-6 col-lg-7">
+                            <div class="d-flex flex-wrap gap-2" id="main-actions">
+                                <button onclick="document.getElementById('productModalLabel').textContent='Agregar Producto'; document.getElementById('product-form').reset(); document.getElementById('product-id').value=''; new bootstrap.Modal(document.getElementById('productModal')).show();" class="btn btn-success" id="add-product-btn">
+                                    <i class="bi bi-plus-circle-fill"></i> Agregar Producto
+                                </button>
+                                <a href="{{ url_for('scanner_page') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-upc-scan"></i> Escáner
+                                </a>
+                                <button class="btn btn-outline-warning" id="low-stock-btn">
+                                    <i class="bi bi-exclamation-triangle"></i> Stock Bajo
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="location.reload()">
+                                    <i class="bi bi-arrow-clockwise"></i> Refrescar
                                 </button>
                             </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-funnel-fill"></i></span>
-                                <select class="form-select" id="department-filter">
-                                    <option value="">Todos los departamentos</option>
-                                    <option value="Ferretería">Ferretería</option>
-                                    <option value="Repuestos">Repuestos</option>
-                                    <option value="Hogar">Hogar</option>
-                                    <option value="Electricidad">Electricidad</option>
-                                    <option value="Plomería">Plomería</option>
-                                </select>
-                                <button class="btn btn-outline-secondary" id="clear-filter-btn" title="Quitar filtro de departamento">
-                                    <i class="bi bi-filter-circle-fill"></i>
+                            <!-- Botones para eliminación masiva -->
+                            <div class="d-flex flex-wrap gap-2 mt-2" id="bulk-actions" style="display: none;">
+                                <span class="badge bg-info me-2" id="selected-count">0 productos seleccionados</span>
+                                <button class="btn btn-danger btn-sm" id="delete-selected-btn">
+                                    <i class="bi bi-trash-fill"></i> Eliminar Seleccionados
                                 </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="cancel-selection-btn">
+                                    <i class="bi bi-x-circle"></i> Cancelar
+                                </button>
+                                <!-- Nuevo: Panel de Edición Masiva -->
+                                <div class="vr mx-2"></div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label for="bulk-department-select" class="form-label mb-0 small">Cambiar Depto:</label>
+                                    <select class="form-select form-select-sm" id="bulk-department-select" style="width: 150px;">
+                                        <option>Ferretería</option>
+                                        <option>Repuestos</option>
+                                        <option>Hogar</option>
+                                        <option>Electricidad</option>
+                                        <option>Plomería</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" id="bulk-update-btn">
+                                        <i class="bi bi-check-all"></i> Actualizar
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Búsqueda + Filtro Departamento -->
+                        <div class="col-xl-6">
+                            <div class="d-flex gap-2">
+                                <div class="flex-grow-1">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" id="inventory-search" class="form-control" placeholder="Buscar productos...">
+                                    </div>
+                                </div>
+                                <div style="min-width: 200px;">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-funnel-fill"></i></span>
+                                        <select class="form-select" id="department-filter">
+                                            <option value="">Todos los departamentos</option>
+                                            <option value="Ferretería">Ferretería</option>
+                                            <option value="Repuestos">Repuestos</option>
+                                            <option value="Hogar">Hogar</option>
+                                            <option value="Electricidad">Electricidad</option>
+                                            <option value="Plomería">Plomería</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,13 +134,16 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th class="text-center" style="width: 40px;">
+                                        <input type="checkbox" id="select-all-checkbox" title="Seleccionar todos">
+                                    </th>
                                     <th>Código</th>
                                     <th>Descripción</th>
                                     <th>Precio Costo (RD$)</th>
                                     <th>Precio Venta (RD$)</th>
-                                    <th>Stock</th>
+                                    <th style="width: 8%;">Stock</th>
                                     <th>Inv. Mínimo</th>
-                                    <th>Departamento</th>
+                                    <th style="width: 12%;">Departamento</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -293,14 +302,21 @@
 }
 
 /* === INDICADORES DE STOCK === */
-.low-stock .badge {
+/* Hacer la regla más específica para evitar que reglas genéricas sobrescriban el color */
+.badge.badge-stock-bajo, .low-stock .badge.badge-stock-bajo {
     background: #dc3545 !important;
-    color: white;
+    color: #ffffff !important;
     padding: 3px 8px;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
     margin-left: 5px;
+    border: none;
+}
+/* Asegurar contraste también en modo oscuro */
+body.dark-mode .badge.badge-stock-bajo, body.dark-mode .low-stock .badge.badge-stock-bajo {
+    background: #dc3545 !important;
+    color: #ffffff !important;
 }
 
 .table tbody tr.low-stock {
@@ -328,24 +344,42 @@
 .badge {
     font-size: 0.75rem;
     padding: 0.35em 0.65em;
+    background: #e9ecef;
+    color: #212529;
 }
 
-/* === ESTADO VACÍO === */
-#empty-state {
-    display: none;
+.badge {
+    background-color: #e9ecef !important; /* Fondo claro para legibilidad */
+    color: #212529 !important; /* Texto oscuro para legibilidad */
+}
+/* Clase específica para badges de departamento: asegurar contraste y legibilidad */
+.department-badge {
+    background-color: #e9ecef !important;
+    color: #212529 !important;
+}
+/* En modo oscuro usar fondo oscuro y texto claro para la badge de departamento */
+body.dark-mode .department-badge {
+    background-color: #2d3748 !important;
+    color: #ffffff !important;
+}
+/* === INFORMACIÓN DE TABLA === */
+#table-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
 }
 
-#empty-state.show {
-    display: flex !important;
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
 }
 
-/* === ANIMACIONES SUAVES === */
-.table tbody tr {
-    transition: all 0.2s ease;
-}
-
-.table tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
+.info-item i {
+    font-size: 0.875rem;
+    opacity: 0.7;
 }
 
 /* === RESPONSIVE === */
@@ -363,6 +397,12 @@
 
     .dropdown-menu {
         width: 100%;
+    }
+
+    #table-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
     }
 }
 </style>
@@ -416,17 +456,14 @@
                 }
 
                 row.innerHTML = `
-                    <td>
-                        <div class="d-flex align-items-center">
-                            ${p.codigo_barras || 'Sin código'}
-                            ${isLowStock ? '<span class="badge">BAJO</span>' : ''}
-                        </div>
+                    <td class="text-center">
+                        <input type="checkbox" class="product-checkbox" data-product-id="${p.id}" data-product-name="${p.nombre || 'Sin nombre'}">
                     </td>
-                    <td>
-                        <div class="fw-semibold text-truncate" style="max-width: 250px;" title="${p.nombre || ''}">
-                            ${p.nombre || 'Sin nombre'}
-                        </div>
+                    <td class="text-nowrap">
+                        ${p.codigo_barras || 'Sin código'} 
+                        ${isLowStock ? '<span class="badge badge-stock-bajo" style="background-color: #dc3545 !important; color: #ffffff !important;">BAJO</span>' : ''}
                     </td>
+                    <td class="fw-semibold" title="${p.nombre || ''}">${p.nombre || 'Sin nombre'}</td>
                     <td class="text-nowrap">${formatCurrency(p.costo || 0)}</td>
                     <td class="text-nowrap">${formatCurrency(p.precio || 0)}</td>
                     <td class="text-center">
@@ -434,7 +471,7 @@
                     </td>
                     <td class="text-center">${p.stock_minimo || 0}</td>
                     <td>
-                        <span class="badge" style="background: var(--accent-color);">${p.departamento || 'Sin departamento'}</span>
+                        <span class="badge department-badge" style="background-color: #e9ecef !important; color: #212529 !important;">${p.departamento || 'Sin departamento'}</span>
                     </td>
                     <td>
                         <div class="d-flex gap-1">
@@ -469,34 +506,6 @@
         });
 
         renderInventoryTable(filtered);
-
-        // Actualizar estado visual de filtros
-        updateFilterIndicators();
-    }
-
-    function updateFilterIndicators() {
-        const searchTerm = document.getElementById('inventory-search').value;
-        const departmentFilter = document.getElementById('department-filter').value;
-        const clearSearchBtn = document.getElementById('clear-search-btn');
-        const clearFilterBtn = document.getElementById('clear-filter-btn');
-
-        // Actualizar botón de limpiar búsqueda
-        if (searchTerm) {
-            clearSearchBtn.classList.add('text-warning');
-            clearSearchBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
-        } else {
-            clearSearchBtn.classList.remove('text-warning');
-            clearSearchBtn.innerHTML = '<i class="bi bi-x-circle"></i>';
-        }
-
-        // Actualizar botón de limpiar filtro departamento
-        if (departmentFilter) {
-            clearFilterBtn.classList.add('text-info');
-            clearFilterBtn.innerHTML = '<i class="bi bi-filter-circle-fill"></i>';
-        } else {
-            clearFilterBtn.classList.remove('text-info');
-            clearFilterBtn.innerHTML = '<i class="bi bi-filter-circle"></i>';
-        }
     }
 
     async function fetchInventory() {
@@ -505,22 +514,9 @@
         filterProducts();
     }
 
-    // Event listeners para filtros
-    document.getElementById('inventory-search').addEventListener('keyup', filterProducts);
-    document.getElementById('department-filter').addEventListener('change', filterProducts);
-
-    // Botón para limpiar búsqueda de texto
-    document.getElementById('clear-search-btn').addEventListener('click', () => {
-        document.getElementById('inventory-search').value = '';
-        filterProducts();
-        document.getElementById('inventory-search').focus();
-    });
-
-    // Botón para quitar filtro de departamento
-    document.getElementById('clear-filter-btn').addEventListener('click', () => {
-        document.getElementById('department-filter').value = '';
-        filterProducts();
-    });
+    // Event listeners para filtros con mantenimiento de selección
+    document.getElementById('inventory-search').addEventListener('keyup', filterProductsWithSelection);
+    document.getElementById('department-filter').addEventListener('change', filterProductsWithSelection);
 
     document.getElementById('add-product-btn').addEventListener('click', () => {
         document.getElementById('productModalLabel').textContent = 'Agregar Producto';
@@ -543,8 +539,8 @@
             document.getElementById('departamento').value = product.departamento;
             productModal.show();
         }
-        if (e.target.closest('.delete-btn')) {
-            const id = e.target.closest('.delete-btn').dataset.id;
+        if (e.target.closest('.delete-btn') || e.target.closest('.quick-delete-btn')) {
+            const id = e.target.closest('.delete-btn, .quick-delete-btn').dataset.id;
             const product = allProducts.find(p => p.id == id);
             if (confirm(`¿Está seguro de que desea eliminar el producto "${product.nombre}"?`)) {
                 deleteProduct(id);
@@ -620,10 +616,8 @@
         const data = await response.json();
         if (data.success) {
             renderInventoryTable(data.products);
-            // Limpiar filtros cuando se muestra stock bajo
+            // Limpiar búsqueda cuando se muestra stock bajo
             document.getElementById('inventory-search').value = '';
-            document.getElementById('department-filter').value = '';
-            updateFilterIndicators();
         }
     });
 
@@ -820,6 +814,202 @@
         }
     });
 
+    // Botón de actualización masiva
+    document.getElementById('bulk-update-btn').addEventListener('click', async function() {
+        const newDepartment = document.getElementById('bulk-department-select').value;
+        if (!newDepartment) {
+            alert('Por favor, seleccione un departamento.');
+            return;
+        }
+
+        const productIds = Array.from(selectedProducts).map(p => p.id);
+        const message = `¿Está seguro de que desea cambiar el departamento a "${newDepartment}" para ${productIds.length} producto(s)?`;
+
+        if (!confirm(message)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/products/bulk_update_department', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: productIds, department: newDepartment })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(`✅ ${result.updated_count} producto(s) actualizado(s) correctamente.`);
+                fetchInventory(); // Recargar la tabla
+                toggleAllCheckboxes(false); // Limpiar selección
+            } else {
+                alert(`❌ Error: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de red al actualizar masivamente.');
+        }
+    });
+
+    // Funcionalidad de eliminación masiva
+    let selectedProducts = new Set();
+
+    function updateSelectionCount() {
+        const count = selectedProducts.size;
+        document.getElementById('selected-count').textContent = `${count} producto${count !== 1 ? 's' : ''} seleccionado${count !== 1 ? 's' : ''}`;
+
+        const mainActions = document.getElementById('main-actions');
+        const bulkActions = document.getElementById('bulk-actions');
+
+        if (count > 0) {
+            mainActions.style.display = 'none';
+            bulkActions.style.display = 'flex';
+        } else {
+            mainActions.style.display = 'flex';
+            bulkActions.style.display = 'none';
+        }
+    }
+
+    function toggleAllCheckboxes(checked) {
+        const productCheckboxes = document.querySelectorAll('.product-checkbox');
+        productCheckboxes.forEach(checkbox => {
+            checkbox.checked = checked;
+            const productId = checkbox.dataset.productId;
+            const productName = checkbox.dataset.productName;
+
+            if (checked) {
+                selectedProducts.add({ id: productId, name: productName });
+            } else {
+                selectedProducts.forEach(item => {
+                    if (item.id === productId) {
+                        selectedProducts.delete(item);
+                    }
+                });
+            }
+        });
+        updateSelectionCount();
+    }
+
+    function toggleProductSelection(productId, productName, checked) {
+        if (checked) {
+            selectedProducts.add({ id: productId, name: productName });
+        } else {
+            selectedProducts.forEach(item => {
+                if (item.id === productId) {
+                    selectedProducts.delete(item);
+                }
+            });
+        }
+        updateSelectionCount();
+
+        // Verificar si todos los checkboxes visibles están seleccionados para actualizar el checkbox maestro
+        const selectAllCheckbox = document.getElementById('select-all-checkbox');
+        const productCheckboxes = document.querySelectorAll('.product-checkbox');
+        const checkedCount = Array.from(productCheckboxes).filter(cb => cb.checked).length;
+        selectAllCheckbox.checked = checkedCount === productCheckboxes.length && checkedCount > 0;
+    }
+
+    // Event listener para checkbox "seleccionar todos"
+    document.getElementById('select-all-checkbox').addEventListener('change', function() {
+        toggleAllCheckboxes(this.checked);
+    });
+
+    // Event listeners para checkboxes individuales (delegación de eventos)
+    document.getElementById('inventory-table-body').addEventListener('change', function(e) {
+        if (e.target.classList.contains('product-checkbox')) {
+            const checkbox = e.target; // Aquí estaba el error
+            const productId = checkbox.dataset.productId;
+            const productName = checkbox.dataset.productName;
+            toggleProductSelection(productId, productName, checkbox.checked);
+        }
+    });
+
+    // Botón eliminar seleccionados
+    document.getElementById('delete-selected-btn').addEventListener('click', async function() {
+        if (selectedProducts.size === 0) {
+            alert('No hay productos seleccionados');
+            return;
+        }
+
+        const productNames = Array.from(selectedProducts).map(p => `"${p.name}"`).join(', ');
+        const message = `¿Está seguro de que desea eliminar ${selectedProducts.size} producto${selectedProducts.size > 1 ? 's' : ''}?\n\nProductos: ${productNames}`;
+
+        if (!confirm(message)) {
+            return;
+        }
+
+        const productIds = Array.from(selectedProducts).map(p => p.id);
+        let successCount = 0;
+        let failedCount = 0;
+
+        for (const productId of productIds) {
+            try {
+                const response = await fetch(`/api/product/delete/${productId}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    successCount++;
+                    // Remover de selectedProducts
+                    selectedProducts.forEach(item => {
+                        if (item.id === productId) {
+                            selectedProducts.delete(item);
+                        }
+                    });
+                } else {
+                    console.error(`Error eliminando producto ${productId}: ${result.error}`);
+                    failedCount++;
+                }
+            } catch (error) {
+                console.error(`Error de red eliminando producto ${productId}:`, error);
+                failedCount++;
+            }
+        }
+
+        if (successCount > 0) {
+            alert(`✅ Eliminados ${successCount} producto${successCount > 1 ? 's' : ''} exitosamente.` + (failedCount > 0 ? ` ${failedCount} fallo${failedCount > 1 ? 's' : ''}.` : ''));
+            fetchInventory(); // Refrescar la tabla
+            updateSelectionCount(); // Ocultar los botones de eliminación masiva si no quedan productos seleccionados
+        } else {
+            alert('❌ No se pudo eliminar ningún producto.');
+        }
+    });
+
+    // Botón cancelar selección
+    document.getElementById('cancel-selection-btn').addEventListener('click', function() {
+        toggleAllCheckboxes(false);
+    });
+
+    // Limpiar selección cuando se filtran los productos (para evitar inconsistencias)
+    function filterProductsWithSelection() {
+        const previousSelectedIds = new Set(Array.from(selectedProducts).map(p => p.id));
+
+        // Ejecutar el filtro normal
+        filterProducts();
+
+        // Después del filtro, verificar si los productos seleccionados aún están visibles
+        const visibleProductCheckboxes = document.querySelectorAll('#inventory-table-body .product-checkbox');
+        const stillVisibleIds = new Set();
+
+        visibleProductCheckboxes.forEach(checkbox => {
+            const productId = checkbox.dataset.productId;
+            if (previousSelectedIds.has(productId)) {
+                stillVisibleIds.add(productId);
+                checkbox.checked = true;
+            }
+        });
+
+        // Actualizar selectedProducts para mantener solo los visibles
+        selectedProducts = new Set(Array.from(selectedProducts).filter(product =>
+            stillVisibleIds.has(product.id)
+        ));
+
+        updateSelectionCount();
+    }
+
+    // Sobreescribir las funciones de filtro para incluir la lógica de selección
+    const originalSearchListener = document.getElementById('inventory-search').addEventListener;
+    const originalDepartmentListener = document.getElementById('department-filter').addEventListener;
+
+    // Remover event listeners antiguos
+    // (Esto es un poco tricky, necesitamos recrearlos)
+
+    // Ejecutar fetchInventory para inicializar
     fetchInventory();
 </script>
 {% endblock %}

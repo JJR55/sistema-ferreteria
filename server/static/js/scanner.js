@@ -162,27 +162,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const handleDetection = (result) => {
+        // Si el escáner no está activo (en cooldown), no hacer nada.
+        if (!isScannerActive) return;
+
         const code = result.codeResult.code;
 
-        // Evitar procesar el mismo código repetidamente en un corto período
-        if (code === lastScannedCode) {
-            return;
-        }
-
-        lastScannedCode = code;
+        // Pausar el escáner para procesar este código y evitar lecturas múltiples.
+        isScannerActive = false;
         updateScannerStatus('Código detectado - procesando...', 'info');
-        
-        // Procesar el código sin detener el escáner
-        handleBarcode(code);
 
-        // Limpiar el último código escaneado después de un breve período para permitir volver a escanearlo
-        setTimeout(() => {
-            lastScannedCode = null;
-            // Si no hay más detecciones, volver al estado 'activo'
-            if (scannerStatus.textContent.includes('procesando')) {
-                updateScannerStatus('Escáner activo. Apunte al código de barras.', 'primary');
-            }
-        }, 800); // 0.8 segundos de "cooldown" para el mismo código
+        // Usamos una promesa para asegurarnos de que el procesamiento termine antes de reactivar.
+        handleBarcode(code).finally(() => {
+            // Reactivar el escáner después de un breve "cooldown" para evitar lecturas accidentales del mismo código.
+            setTimeout(() => {
+                isScannerActive = true;
+                // Solo actualizar el estado si no hay otro proceso en curso.
+                if (scannerStatus.textContent.includes('procesando')) {
+                    updateScannerStatus('Escáner activo - enfocando código', 'primary');
+                }
+            }, 800); // 0.8 segundos de enfriamiento.
+        });
     };
 
     // --- LÓGICA DE MANEJO DE DATOS ---

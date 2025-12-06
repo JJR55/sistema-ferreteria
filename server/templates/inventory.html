@@ -209,7 +209,10 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="codigo_barras" class="form-label">Código de Barras</label>
-                            <input type="text" class="form-control" id="codigo_barras" required>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="codigo_barras" required>
+                                <button class="btn btn-outline-secondary" type="button" id="scan-barcode-modal-btn" title="Escanear código de barras"><i class="bi bi-upc-scan"></i></button>
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="nombre" class="form-label">Descripción del Producto</label>
@@ -270,6 +273,28 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="save-product-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Escáner de Código de Barras -->
+<div class="modal fade" id="inventoryScannerModal" tabindex="-1" aria-labelledby="inventoryScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inventoryScannerModalLabel"><i class="bi bi-upc-scan"></i> Escanear Código de Barras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted text-center">Apunte la cámara al código de barras.</p>
+                <div id="inventory-scanner-viewport" class="viewport" style="position: relative; min-height: 240px; max-width: 480px; margin: auto;">
+                    <!-- QuaggaJS se adjuntará aquí -->
+                </div>
+                <div id="inventory-scanner-status" class="mt-2 text-center text-muted"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -415,6 +440,8 @@ body.dark-mode .department-badge {
     let allProducts = [];
     const productModal = new bootstrap.Modal(document.getElementById('productModal'));
     const productForm = document.getElementById('product-form');
+    const inventoryScannerModal = new bootstrap.Modal(document.getElementById('inventoryScannerModal'));
+    let isModalScannerActive = false;
 
     function formatCurrency(value) {
         return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
@@ -847,6 +874,71 @@ body.dark-mode .department-badge {
             alert('Error de red al actualizar masivamente.');
         }
     });
+
+    // --- Lógica del Escáner en el Modal de Producto ---
+    document.getElementById('scan-barcode-modal-btn').addEventListener('click', () => {
+        inventoryScannerModal.show();
+    });
+
+    document.getElementById('inventoryScannerModal').addEventListener('shown.bs.modal', () => {
+        startModalScanner();
+    });
+
+    document.getElementById('inventoryScannerModal').addEventListener('hidden.bs.modal', () => {
+        stopModalScanner();
+    });
+
+    function startModalScanner() {
+        if (isModalScannerActive) return;
+        
+        const viewport = document.getElementById('inventory-scanner-viewport');
+        const statusDiv = document.getElementById('inventory-scanner-status');
+        statusDiv.textContent = 'Iniciando cámara...';
+
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: viewport,
+                constraints: {
+                    width: 480,
+                    height: 320,
+                    facingMode: "environment"
+                },
+            },
+            decoder: {
+                readers: ["ean_reader", "code_128_reader", "upc_reader"]
+            },
+            locate: true
+        }, function(err) {
+            if (err) {
+                console.error("Error al iniciar Quagga:", err);
+                statusDiv.textContent = 'Error al iniciar la cámara.';
+                return;
+            }
+            Quagga.start();
+            isModalScannerActive = true;
+            statusDiv.textContent = 'Escáner activo.';
+        });
+
+        Quagga.onDetected(handleModalDetection);
+    }
+
+    function stopModalScanner() {
+        if (isModalScannerActive) {
+            Quagga.offDetected(handleModalDetection);
+            Quagga.stop();
+            isModalScannerActive = false;
+        }
+    }
+
+    function handleModalDetection(result) {
+        const code = result.codeResult.code;
+        document.getElementById('codigo_barras').value = code;
+        stopModalScanner();
+        inventoryScannerModal.hide();
+        playBeep(true); // Usar la función de sonido del escáner principal
+    }
 
     // Funcionalidad de eliminación masiva
     let selectedProducts = new Set();

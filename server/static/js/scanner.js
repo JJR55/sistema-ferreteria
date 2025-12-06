@@ -386,30 +386,47 @@ document.addEventListener('DOMContentLoaded', function() {
             const newItems = allItems
                 .filter(item => item.data.is_new)
                 .map(item => ({
-                    ...item.data, // Enviar todos los datos, incluyendo nombre y precio editados
                     nombre: item.data.nombre,
                     stock: item.quantity,
-                    // Se pueden añadir más campos por defecto si se desea
-                    costo: 0,
-                    precio: 0,
-                    stock_minimo: 1,
-                    departamento: 'Sin Asignar'
+                    costo: item.data.costo || 0,
+                    precio: item.data.precio || 0,
+                    stock_minimo: item.data.stock_minimo || 1,
+                    departamento: item.data.departamento || 'Sin Asignar'
                 }));
 
             showLoader(true);
             try {
-                // Usamos un nuevo endpoint que maneja tanto la creación como la actualización
-                const response = await fetch('/api/inventory/bulk_add_stock', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ existing_items: existingItems, new_items: newItems })
-                });
-                const result = await response.json();
-                showToast(result.message || result.error, !result.success);
-                if (result.success) {
-                    Object.keys(scannedItems).forEach(key => delete scannedItems[key]); // Limpiar el objeto
-                    renderProductList();
+                // Primero, crear productos nuevos si los hay
+                if (newItems.length > 0) {
+                    const respNew = await fetch('/api/products/bulk_add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ products: newItems })
+                    });
+                    const resNew = await respNew.json();
+                    if (!resNew.success) {
+                        showToast('Error al crear productos nuevos: ' + (resNew.error || ''), true);
+                        return;
+                    }
                 }
+
+                // Luego, sumar stock a los productos existentes
+                if (existingItems.length > 0) {
+                    const resp = await fetch('/api/add_scanned_stock', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: existingItems })
+                    });
+                    const result = await resp.json();
+                    if (!result.success) {
+                        showToast('Error al actualizar stock: ' + (result.error || ''), true);
+                        return;
+                    }
+                }
+
+                showToast('Stock actualizado correctamente.');
+                Object.keys(scannedItems).forEach(key => delete scannedItems[key]); // Limpiar el objeto
+                renderProductList();
             } catch (error) {
                 console.error('Error al confirmar stock:', error);
                 showToast('Error de red al confirmar el ingreso de stock.', true);

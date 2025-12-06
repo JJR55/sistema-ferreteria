@@ -6,21 +6,16 @@
 
 {% block breadcrumb %}Cuentas por Pagar{% endblock %}
 
-{% block page_actions %}
-<div class="d-flex gap-2">
-    <button class="btn btn-outline-secondary" id="add-supplier-main-btn">
-        <i class="bi bi-person-plus"></i> Agregar Proveedor
-    </button>
-    <button class="btn btn-outline-primary" onclick="location.reload()">
-        <i class="bi bi-arrow-clockwise"></i> Refrescar
-    </button>
-    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoiceModal">
-        <i class="bi bi-plus-circle"></i> Agregar Factura
-    </button>
-</div>
-{% endblock %}
-
 {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+    </div>
+    <div>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoiceModal">
+            <i class="bi bi-plus-circle"></i> Agregar Factura
+        </button>
+    </div>
+</div>
 <div class="container-fluid">
     <!-- KPIs y Tasa de Cambio -->
     <div class="row mb-4">
@@ -155,6 +150,65 @@
     </div>
 </div>
 
+<!-- Modal para Agregar Factura -->
+<div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="invoiceModalLabel"><i class="bi bi-receipt-cutoff"></i> Registrar Nueva Factura por Pagar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="invoice-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="proveedor" class="form-label">Proveedor</label>
+                            <select class="form-select" id="proveedor" required></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="numero-factura" class="form-label">Número de Factura</label>
+                            <input type="text" class="form-control" id="numero-factura" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha-emision" class="form-label">Fecha de Emisión</label>
+                            <input type="date" class="form-control" id="fecha-emision" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha-vencimiento" class="form-label">Fecha de Vencimiento</label>
+                            <input type="date" class="form-control" id="fecha-vencimiento" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="monto" class="form-label">Monto</label>
+                            <div class="input-group">
+                                <input type="text" inputmode="decimal" class="form-control" id="monto" placeholder="11,500.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="moneda" class="form-label">Moneda</label>
+                            <select class="form-select" id="moneda">
+                                <option value="DOP">DOP</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notas" class="form-label">Notas (Opcional)</label>
+                        <textarea class="form-control" id="notas" rows="2" placeholder="Ej: Pago parcial realizado, contactar antes de pagar..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="save-invoice-btn">Guardar Factura</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal para Editar Factura -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -189,9 +243,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit-monto" class="form-label">Monto</label>
-                            <div class="input-group">
-                                <span class="input-group-text">RD$</span>
-                                <input type="number" class="form-control" id="edit-monto" step="0.01" required>
+                            <div class="input-group"> 
+                                <input type="text" inputmode="decimal" class="form-control" id="edit-monto" placeholder="11,500.00" required>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -201,6 +254,10 @@
                                 <option value="USD">USD</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-notas" class="form-label">Notas (Opcional)</label>
+                        <textarea class="form-control" id="edit-notas" rows="2"></textarea>
                     </div>
                 </form>
             </div>
@@ -287,12 +344,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (diasRestantes < 0) row.classList.add('table-danger');
 
             row.innerHTML = `
-                <td>${cuenta.proveedor}</td>
+                <td>
+                    ${cuenta.proveedor}
+                    ${cuenta.notas ? `<i class="bi bi-info-circle-fill text-primary ms-1" title="${cuenta.notas}" data-bs-toggle="tooltip"></i>` : ''}
+                </td>
                 <td>${cuenta.numero_factura}</td>
-                <td>${new Date(cuenta.fecha_emision).toLocaleDateString('es-DO')}</td>
+                <td>${cuenta.fecha_emision ? new Date(cuenta.fecha_emision).toLocaleDateString('es-DO') : ''}</td>
                 <td>${new Date(cuenta.fecha_vencimiento).toLocaleDateString('es-DO')}</td>
                 <td><span class="${estadoClass}">${estadoText}</span></td>
-                <td>${(cuenta.moneda === 'USD' ? 'US$ ' : 'RD$ ') + cuenta.monto.toFixed(2)}</td>
+                <td>${(cuenta.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (cuenta.monto || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td>${cuenta.moneda}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${cuenta._id}" title="Editar">
@@ -301,9 +361,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button class="btn btn-sm btn-success btn-pay" data-id="${cuenta._id}" title="Marcar como Pagada">
                         <i class="bi bi-check-lg"></i>
                     </button>
+                    <button class="btn btn-sm btn-danger btn-delete" data-id="${cuenta._id}" data-invoice="${cuenta.numero_factura}" title="Eliminar">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
                 </td>
             `;
             tableBody.appendChild(row);
+        });
+
+        // Re-inicializar tooltips para las nuevas notas
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
         // Actualizar KPIs
@@ -331,13 +400,21 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('accounts-payable-table-body').addEventListener('click', function (e) {
         const editBtn = e.target.closest('.btn-edit');
         const payBtn = e.target.closest('.btn-pay');
+        const deleteBtn = e.target.closest('.btn-delete');
 
         if (editBtn) {
             const facturaId = editBtn.dataset.id;
             const cuenta = allAccountsPayable.find(c => c._id === facturaId);
             if (cuenta) {
-                // Llenar y mostrar el modal de edición (lógica completa necesaria aquí)
-                console.log('Editando:', cuenta);
+                // Rellenar formulario de edición
+                document.getElementById('edit-factura-id').value = facturaId;
+                document.getElementById('edit-proveedor').value = cuenta.proveedor_id || '';
+                document.getElementById('edit-numero-factura').value = cuenta.numero_factura || '';
+                document.getElementById('edit-fecha-emision').value = cuenta.fecha_emision ? cuenta.fecha_emision.split('T')[0] : '';
+                document.getElementById('edit-fecha-vencimiento').value = cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.split('T')[0] : '';
+                document.getElementById('edit-monto').value = cuenta.monto || '';
+                document.getElementById('edit-moneda').value = cuenta.moneda || 'DOP';
+                document.getElementById('edit-notas').value = cuenta.notas || '';
                 editModal.show();
             }
         }
@@ -345,6 +422,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (payBtn) {
             const facturaId = payBtn.dataset.id;
             markAsPaid(facturaId);
+        }
+
+        if (deleteBtn) {
+            const facturaId = deleteBtn.dataset.id;
+            const numeroFactura = deleteBtn.dataset.invoice;
+            if (confirm(`¿Está seguro de que desea eliminar la factura N° ${numeroFactura}? Esta acción no se puede deshacer.`)) {
+                fetch(`/api/accounts_payable/delete/${facturaId}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) { alert(result.message); fetchAccountsPayable(); }
+                        else { alert('Error: ' + result.error); }
+                    })
+                    .catch(err => alert('Error de red al eliminar.'));
+            }
         }
     });
 
@@ -358,9 +449,181 @@ document.addEventListener('DOMContentLoaded', function () {
         renderPage(filtered);
     });
 
+    document.getElementById('status-filter').addEventListener('change', (e) => {
+        const filter = e.target.value;
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const proximaSemana = new Date(hoy);
+        proximaSemana.setDate(hoy.getDate() + 7);
+
+        let filtered = allAccountsPayable;
+
+        if (filter === 'vencidas') {
+            filtered = allAccountsPayable.filter(c => new Date(c.fecha_vencimiento) < hoy);
+        } else if (filter === 'vence_hoy') {
+            filtered = allAccountsPayable.filter(c => {
+                const fechaVenc = new Date(c.fecha_vencimiento);
+                fechaVenc.setHours(0,0,0,0);
+                return fechaVenc.getTime() === hoy.getTime();
+            });
+        } else if (filter === 'proxima_semana') {
+            filtered = allAccountsPayable.filter(c => {
+                const fechaVenc = new Date(c.fecha_vencimiento);
+                return fechaVenc >= hoy && fechaVenc <= proximaSemana;
+            });
+        } else if (filter === 'vigentes') {
+            filtered = allAccountsPayable.filter(c => new Date(c.fecha_vencimiento) >= hoy);
+        }
+
+        renderPage(filtered);
+    });
+
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+        alert('Funcionalidad de exportar a PDF pendiente de implementación.');
+    });
+
     // Carga inicial
     fetchAccountsPayable();
     fetchExchangeRate();
+    fetchSuppliers();
+
+    // Función para obtener proveedores y poblar los selects del modal
+    async function fetchSuppliers() {
+        try {
+            const resp = await fetch('/api/suppliers');
+            if (!resp.ok) throw new Error('No se pudieron obtener proveedores');
+            const suppliers = await resp.json();
+            const proveedorSelect = document.getElementById('proveedor');
+            const editProveedorSelect = document.getElementById('edit-proveedor');
+            if (proveedorSelect) proveedorSelect.innerHTML = '';
+            if (editProveedorSelect) editProveedorSelect.innerHTML = '';
+
+            suppliers.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s._id;
+                opt.textContent = s.nombre || s.name || 'Proveedor';
+                if (proveedorSelect) proveedorSelect.appendChild(opt);
+
+                const opt2 = opt.cloneNode(true);
+                if (editProveedorSelect) editProveedorSelect.appendChild(opt2);
+            });
+        } catch (err) {
+            console.error('Error fetching suppliers:', err);
+        }
+    }
+
+    // Adjuntar validadores para permitir comas y puntos en input de monto
+    function attachNumericWithComma(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', (e) => {
+            // permitir sólo dígitos, punto y coma
+            const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+            if (cleaned !== e.target.value) e.target.value = cleaned;
+        });
+        el.addEventListener('blur', (e) => {
+            // quitar espacios y normalizar múltiples comas
+            e.target.value = e.target.value.trim();
+        });
+    }
+
+    attachNumericWithComma('monto');
+    attachNumericWithComma('edit-monto');
+
+    // Listener para guardar cambios en factura editada
+    document.getElementById('save-edit-account-btn').addEventListener('click', async function () {
+        const facturaId = document.getElementById('edit-factura-id').value;
+        const proveedor = document.getElementById('edit-proveedor').value;
+        const numero = document.getElementById('edit-numero-factura').value;
+        const fechaEmision = document.getElementById('edit-fecha-emision').value;
+        const fechaVenc = document.getElementById('edit-fecha-vencimiento').value;
+        const montoRaw = document.getElementById('edit-monto').value || '';
+        const monto = parseFloat(montoRaw.replace(/,/g, '')) || 0;
+        const moneda = document.getElementById('edit-moneda').value;
+        const notas = document.getElementById('edit-notas').value;
+
+        if (!facturaId || !proveedor || !numero || !fechaEmision || !fechaVenc || !monto) {
+            alert('Por favor complete todos los campos requeridos.');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/api/accounts_payable/update/${facturaId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    proveedor_id: proveedor,
+                    numero_factura: numero,
+                    fecha_emision: fechaEmision,
+                    fecha_vencimiento: fechaVenc,
+                    monto: monto,
+                    moneda: moneda,
+                    notas: notas
+                })
+            });
+            const result = await resp.json();
+            console.log('Update response:', result);
+            if (result.success) {
+                editModal.hide();
+                // Pequeño delay para asegurar que la BD actualizó
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await fetchAccountsPayable();
+                alert('Factura actualizada exitosamente.');
+            } else {
+                alert('Error al actualizar factura: ' + (result.error || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error updating invoice:', err);
+            alert('Error de red al actualizar la factura.');
+        }
+    });
+
+    // Guardar nueva factura desde el modal
+    document.getElementById('save-invoice-btn').addEventListener('click', async function () {
+        const proveedor = document.getElementById('proveedor').value;
+        const numero = document.getElementById('numero-factura').value;
+        const fechaEmision = document.getElementById('fecha-emision').value;
+        const fechaVenc = document.getElementById('fecha-vencimiento').value;
+        // Aceptar formatos con comas de miles: "11,500.00" o "11500.00"
+        const montoRaw = document.getElementById('monto').value || '';
+        const monto = parseFloat(montoRaw.replace(/,/g, '')) || 0;
+        const moneda = document.getElementById('moneda').value;
+        const notas = document.getElementById('notas').value;
+
+        if (!proveedor || !numero || !fechaEmision || !fechaVenc || !monto) {
+            alert('Por favor complete todos los campos requeridos.');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/accounts_payable/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    proveedor_id: proveedor,
+                    numero_factura: numero,
+                    fecha_emision: fechaEmision,
+                    fecha_vencimiento: fechaVenc,
+                    monto: monto,
+                    moneda: moneda,
+                    notas: notas
+                })
+            });
+            const result = await resp.json();
+            if (result.success) {
+                // Cerrar modal y refrescar lista
+                const invoiceModalEl = document.getElementById('invoiceModal');
+                const invoiceModal = bootstrap.Modal.getInstance(invoiceModalEl);
+                invoiceModal.hide();
+                fetchAccountsPayable();
+            } else {
+                alert('Error al guardar factura: ' + (result.error || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error('Error saving invoice:', err);
+            alert('Error de red al guardar la factura.');
+        }
+    });
 
     // Cargar facturas pagadas al mostrar la pestaña de historial
     async function fetchPaidInvoices() {
@@ -383,7 +646,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td>${f.proveedor}</td>
                 <td>${f.numero_factura}</td>
                 <td>${f.fecha_pago ? new Date(f.fecha_pago).toLocaleDateString('es-DO') : ''}</td>
-                <td>${(f.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (f.monto || 0).toFixed(2)}</td>
+                <td>${(f.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (f.monto || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             `;
             tbody.appendChild(row);
         });
@@ -396,4 +659,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+
 {% endblock %}

@@ -234,6 +234,44 @@ def agregar_producto(codigo, nombre, costo, precio, stock, stock_minimo, departa
     except Exception as e:
         raise e
 
+
+def agregar_productos_en_masa(products):
+    """Agrega múltiples productos a la colección `productos`.
+    `products` debe ser una lista de diccionarios con keys como:
+    nombre, stock, costo, precio, stock_minimo, departamento, codigo_barras (opc.)
+    Devuelve el número de productos insertados.
+    """
+    try:
+        if db is None:
+            raise ConnectionFailure("No hay conexión a la base de datos.")
+
+        docs = []
+        for p in products:
+            try:
+                doc = {
+                    "codigo_barras": p.get('codigo_barras') or p.get('codigo') or '',
+                    "nombre": p.get('nombre', 'Producto Nuevo'),
+                    "costo": float(p.get('costo', 0)) if p.get('costo') not in (None, '') else 0.0,
+                    "precio": float(p.get('precio', 0)) if p.get('precio') not in (None, '') else 0.0,
+                    "stock": int(p.get('stock', 0)) if p.get('stock') not in (None, '') else 0,
+                    "stock_minimo": int(p.get('stock_minimo', 1)) if p.get('stock_minimo') not in (None, '') else 1,
+                    "departamento": p.get('departamento', 'Sin Asignar'),
+                    "unidad_medida": p.get('unidad_medida', 'Unidad'),
+                    "is_new": True
+                }
+                docs.append(doc)
+            except Exception:
+                # Saltar elementos inválidos pero continuar con el resto
+                continue
+
+        if not docs:
+            return 0
+
+        result = productos_collection.insert_many(docs)
+        return len(result.inserted_ids)
+    except Exception as e:
+        raise e
+
 def registrar_cambio_local(modelo, id_modelo, operacion, datos=None):
     """Registra una operación en la tabla de cambios pendientes para sincronización."""
     try:
@@ -598,18 +636,19 @@ def obtener_proveedores():
     except ConnectionFailure:
         return cargar_datos_de_cache('proveedores')
 
-def agregar_factura_compra(proveedor_id, num_factura, fecha_emision, fecha_vencimiento, monto, moneda):
+def agregar_factura_compra(proveedor_id, num_factura, fecha_emision, fecha_vencimiento, monto, moneda, notas=None):
     """Agrega una nueva factura de compra (cuenta por pagar)."""
     try:
-        factura = { # Convertir proveedor_id a ObjectId
-            "proveedor_id": proveedor_id,
+        factura = {
+            "proveedor_id": ObjectId(proveedor_id),
             "numero_factura": num_factura,
             "fecha_emision": fecha_emision,
             "fecha_vencimiento": fecha_vencimiento,
             "monto": monto,
             "moneda": moneda,
             "estado": "Pendiente",
-        }
+            "notas": notas
+        }  
         facturas_compra_collection.insert_one(factura)
     except Exception as e:
         raise e
@@ -643,12 +682,14 @@ def obtener_cuentas_por_pagar():
             {
                 "$project": {
                     "_id": 1,
+                    "proveedor_id": 1,
                     "proveedor": "$proveedor.nombre",
                     "numero_factura": 1,
-                    "fecha_emision": 1, # Keep as datetime for now, convert later
-                    "fecha_vencimiento": 1, # Keep as datetime for now, convert later
+                    "fecha_emision": 1,
+                    "fecha_vencimiento": 1,
                     "monto": 1,
-                    "moneda": 1
+                    "moneda": 1,
+                    "notas": 1
                 }
             }
         ]))
@@ -656,6 +697,8 @@ def obtener_cuentas_por_pagar():
         # Convertir ObjectId a string para que sea serializable en JSON
         for cuenta in cuentas:
             cuenta["_id"] = str(cuenta["_id"])
+            if 'proveedor_id' in cuenta:
+                cuenta["proveedor_id"] = str(cuenta["proveedor_id"])
             if 'fecha_emision' in cuenta and isinstance(cuenta['fecha_emision'], datetime):
                 cuenta['fecha_emision'] = cuenta['fecha_emision'].isoformat()
             if 'fecha_vencimiento' in cuenta and isinstance(cuenta['fecha_vencimiento'], datetime):
@@ -677,7 +720,16 @@ def marcar_factura_como_pagada(factura_id):
     except Exception as e:
         raise e
 
-def actualizar_factura_compra(factura_id, proveedor_id, num_factura, fecha_emision, fecha_vencimiento, monto, moneda):
+def eliminar_factura_compra(factura_id):
+    """Elimina una factura de compra por su ID."""
+    try:
+        if db is None:
+            raise ConnectionFailure("No hay conexión a la base de datos.")
+        facturas_compra_collection.delete_one({"_id": ObjectId(factura_id)})
+    except Exception as e:
+        raise e
+
+def actualizar_factura_compra(factura_id, proveedor_id, num_factura, fecha_emision, fecha_vencimiento, monto, moneda, notas=None):
     """Actualiza una factura de compra existente."""
     try:
         if db is None:
@@ -691,7 +743,8 @@ def actualizar_factura_compra(factura_id, proveedor_id, num_factura, fecha_emisi
                 "fecha_emision": fecha_emision,
                 "fecha_vencimiento": fecha_vencimiento,
                 "monto": monto,
-                "moneda": moneda
+                "moneda": moneda,
+                "notas": notas
             }}
         )
     except Exception as e:
@@ -748,6 +801,38 @@ def obtener_facturas_pagadas(fecha_inicio, fecha_fin):
         return facturas
     except Exception as e:
         print(f"Error al obtener facturas pagadas: {e}")
+        return []
+
+
+def buscar_facturas_por_texto(texto):
+    """Busca facturas por proveedor o número de factura que contengan el texto dado (case-insensitive)."""
+    try:
+        if facturas_compra_collection is None:
+            print("AVISO CRÍTICO: facturas_compra_collection es None en buscar_facturas_por_texto")
+            return []
+        regex = {"$regex": texto, "$options": "i"}
+        pipeline = [
+            {
+                "$lookup": {
+                    "from": "proveedores",
+                    "localField": "proveedor_id",
+                    "foreignField": "_id",
+                    "as": "proveedor"
+                }
+            },
+            {"$unwind": {"path": "$proveedor", "preserveNullAndEmptyArrays": True}},
+            {"$match": {"$or": [{"numero_factura": regex}, {"proveedor.nombre": regex}] }},
+            {"$project": {"_id": 1, "proveedor": "$proveedor.nombre", "numero_factura": 1, "fecha_emision": 1, "fecha_vencimiento": 1, "fecha_pago": 1, "monto": 1, "moneda": 1, "estado": 1}}
+        ]
+        resultados = list(facturas_compra_collection.aggregate(pipeline))
+        for f in resultados:
+            if '_id' in f: f['_id'] = str(f['_id'])
+            if 'fecha_emision' in f and isinstance(f['fecha_emision'], datetime): f['fecha_emision'] = f['fecha_emision'].isoformat()
+            if 'fecha_vencimiento' in f and isinstance(f['fecha_vencimiento'], datetime): f['fecha_vencimiento'] = f['fecha_vencimiento'].isoformat()
+            if 'fecha_pago' in f and isinstance(f['fecha_pago'], datetime): f['fecha_pago'] = f['fecha_pago'].isoformat()
+        return resultados
+    except Exception as e:
+        print(f"Error buscando facturas por texto '{texto}': {e}")
         return []
 
 def crear_admin_por_defecto():
@@ -907,6 +992,48 @@ def registrar_venta(items_venta, total, itbis, descuento, usuario_id, tipo_pago,
         raise e
         raise e
 
+def obtener_historial_ventas(limit=100):
+    """Obtiene un historial de las últimas ventas con información del cliente y vendedor."""
+    try:
+        pipeline = [
+            {"$sort": {"fecha": -1}},
+            {"$limit": limit},
+            {
+                "$lookup": {
+                    "from": "clientes",
+                    "localField": "cliente_id",
+                    "foreignField": "_id",
+                    "as": "cliente_info"
+                }
+            },
+            {"$unwind": {"path": "$cliente_info", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
+                    "from": "usuarios",
+                    "localField": "usuario_id",
+                    "foreignField": "_id",
+                    "as": "vendedor_info"
+                }
+            },
+            {"$unwind": {"path": "$vendedor_info", "preserveNullAndEmptyArrays": True}},
+            {
+                "$project": {
+                    "_id": {"$toString": "$_id"},
+                    "fecha": "$fecha",
+                    "cliente_nombre": {"$ifNull": ["$cliente_info.nombre", "$temp_cliente_nombre"]},
+                    "vendedor_nombre": "$vendedor_info.nombre_usuario",
+                    "total": "$total",
+                    "tipo_pago": "$tipo_pago",
+                    "estado": "$estado"
+                }
+            }
+        ]
+        ventas = list(ventas_collection.aggregate(pipeline))
+        return ventas
+    except Exception as e:
+        print(f"Error al obtener historial de ventas: {e}")
+        return []
+
 def guardar_venta_local(sale_data):
     """Guarda los datos de una venta en la base de datos SQLite local."""
     try:
@@ -974,6 +1101,44 @@ def obtener_cuentas_por_cobrar():
         return cuentas
     except Exception as e:
         print(f"Error al obtener cuentas por cobrar: {e}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return []
+
+def obtener_cuentas_cobradas(fecha_inicio, fecha_fin):
+    """Obtiene todas las ventas pagadas en un rango de fechas."""
+    try:
+        pipeline = [
+            {"$match": {
+                "estado": "Pagada",
+                "fecha": {"$gte": fecha_inicio, "$lte": fecha_fin}
+            }},
+            {
+                "$lookup": {
+                    "from": "clientes",
+                    "localField": "cliente_id",
+                    "foreignField": "_id",
+                    "as": "cliente_info"
+                }
+            },
+            {"$unwind": {"path": "$cliente_info", "preserveNullAndEmptyArrays": True}},
+            {
+                "$project": {
+                    "venta_id": {"$toString": "$_id"},
+                    "fecha": "$fecha",
+                    "cliente_nombre": {"$ifNull": ["$cliente_info.nombre", "$temp_cliente_nombre", "(Sin cliente)"]},
+                    "total": "$total"
+                }
+            },
+            {"$sort": {"fecha": -1}}
+        ]
+        cuentas = list(ventas_collection.aggregate(pipeline))
+        for c in cuentas:
+            if 'fecha' in c and isinstance(c['fecha'], datetime):
+                c['fecha'] = c['fecha'].isoformat()
+        return cuentas
+    except Exception as e:
+        print(f"Error al obtener cuentas cobradas: {e}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
         return []
@@ -1582,6 +1747,50 @@ def obtener_notificaciones_pagos_vencidos():
 
     except Exception as e:
         print(f"Error obteniendo notificaciones de pagos vencidos: {e}")
+        return []
+
+def obtener_notificaciones_facturas_por_vencer():
+    """Obtiene notificaciones de facturas de compra próximas a vencer (ej. en 7 días)."""
+    try:
+        hoy = datetime.now()
+        limite_vencimiento = hoy + timedelta(days=7)
+
+        pipeline = [
+            {
+                "$match": {
+                    "estado": "Pendiente",
+                    "fecha_vencimiento": {"$gte": hoy, "$lte": limite_vencimiento}
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "proveedores",
+                    "localField": "proveedor_id",
+                    "foreignField": "_id",
+                    "as": "proveedor_info"
+                }
+            },
+            {"$unwind": {"path": "$proveedor_info", "preserveNullAndEmptyArrays": True}},
+            {"$sort": {"fecha_vencimiento": 1}}
+        ]
+
+        facturas = list(facturas_compra_collection.aggregate(pipeline))
+        notifications = []
+        for f in facturas:
+            dias_restantes = (f['fecha_vencimiento'] - hoy).days
+            notifications.append({
+                'id': f"due_payment_{str(f['_id'])}",
+                'type': 'due_payment',
+                'title': f'⚠️ PAGO PRÓXIMO ({dias_restantes} días)',
+                'message': f"Factura de {f.get('proveedor_info', {}).get('nombre', 'N/A')} por {f['moneda']}${f['monto']:.2f} vence pronto.",
+                'priority': 'medium',
+                'created_at': datetime.now(),
+                'data': {'factura_id': str(f['_id'])}
+            })
+        return notifications
+
+    except Exception as e:
+        print(f"Error obteniendo notificaciones de facturas por vencer: {e}")
         return []
 
 def obtener_notificaciones_productos_por_vencer():

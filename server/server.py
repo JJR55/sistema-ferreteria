@@ -188,6 +188,12 @@ def cash_closing_page():
     """Muestra la página de Cierre de Caja."""
     return render_template('cash_closing.html')
 
+@app.route('/sales_history')
+@login_required
+def sales_history_page():
+    """Muestra la página del historial de ventas."""
+    return render_template('sales_history.html')
+
 # --- Rutas de la API (Backend para el Frontend) ---
 
 @app.route('/api/products')
@@ -383,7 +389,15 @@ def add_account_payable():
     """Agrega una nueva cuenta por pagar."""
     data = request.get_json()
     try:
-        agregar_factura_compra(data['proveedor_id'], data['numero_factura'], data['fecha_emision'], data['fecha_vencimiento'], float(data['monto']), data['moneda'])
+        # Normalizar monto: aceptar formatos con comas de miles como "11,500.00"
+        monto_raw = data.get('monto')
+        try:
+            monto = float(str(monto_raw).replace(',', '').strip())
+        except Exception:
+            return jsonify({"success": False, "error": "Formato de monto inválido"}), 400
+
+        notas = data.get('notas') # Obtener notas, puede ser None
+        agregar_factura_compra(data['proveedor_id'], data['numero_factura'], data['fecha_emision'], data['fecha_vencimiento'], monto, data['moneda'], notas)
         return jsonify({"success": True, "message": "Factura agregada correctamente."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -394,6 +408,19 @@ def get_accounts_payable():
     try:
         cuentas = obtener_cuentas_por_pagar()
         return jsonify(cuentas)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/accounts_payable/search')
+def search_accounts_payable():
+    """Busca facturas por texto en proveedor o número de factura (diagnóstico)."""
+    q = request.args.get('q', '').strip()
+    if not q:
+        return jsonify({"success": False, "error": "Parámetro 'q' requerido"}), 400
+    try:
+        resultados = buscar_facturas_por_texto(q)
+        return jsonify(resultados)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -415,7 +442,15 @@ def update_account_payable(factura_id):
     data = request.get_json()
     try:
         # Reutilizamos la función de la base de datos para actualizar
-        actualizar_factura_compra(factura_id, data['proveedor_id'], data['numero_factura'], data['fecha_emision'], data['fecha_vencimiento'], float(data['monto']), data['moneda'])
+        # Normalizar monto para aceptar formatos con comas
+        monto_raw = data.get('monto')
+        try:
+            monto = float(str(monto_raw).replace(',', '').strip())
+        except Exception:
+            return jsonify({"success": False, "error": "Formato de monto inválido"}), 400
+
+        notas = data.get('notas') # Obtener notas para la actualización
+        actualizar_factura_compra(factura_id, data['proveedor_id'], data['numero_factura'], data['fecha_emision'], data['fecha_vencimiento'], monto, data['moneda'], notas)
         return jsonify({"success": True, "message": "Factura actualizada correctamente."})
     except Exception as e:
         print(f"Error actualizando factura: {e}")
@@ -1017,6 +1052,18 @@ def get_accounts_receivable():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/accounts_receivable/paid')
+@login_required
+def get_paid_accounts_receivable():
+    """Devuelve la lista de cuentas por cobrar que ya han sido pagadas."""
+    try:
+        hoy = datetime.now()
+        inicio = hoy - timedelta(days=90) # Historial de los últimos 90 días
+        cuentas = obtener_cuentas_cobradas(inicio, hoy)
+        return jsonify(cuentas)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/diagnose_sales', methods=['GET'])
 def diagnose_sales():
     """Endpoint de diagnóstico: muestra todas las ventas sin filtros para investigación."""
@@ -1237,6 +1284,16 @@ def api_register_sale():
         print(f"Traceback: {trace}")
         # Devolver traceback en la respuesta para depuración en entorno controlado
         return jsonify({"success": False, "error": f"No se pudo registrar la venta: {str(e)}", "traceback": trace}), 500
+
+@app.route('/api/sales_history')
+@login_required
+def api_get_sales_history():
+    """Obtiene el historial de las últimas ventas."""
+    try:
+        sales = obtener_historial_ventas(limit=100) # Obtener las últimas 100 ventas
+        return jsonify({"success": True, "sales": sales})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/pos/update_sale_client', methods=['POST'])
 @login_required
@@ -1595,10 +1652,12 @@ def get_notifications():
         low_stock = obtener_notificaciones_stock_bajo()
         overdue_payments = obtener_notificaciones_pagos_vencidos()
         expiring_products = obtener_notificaciones_productos_por_vencer()
+        due_soon_invoices = obtener_notificaciones_facturas_por_vencer()
         overdue_receivables = obtener_notificaciones_cuentas_por_cobrar_vencidas()
 
         all_notifications = []
         all_notifications.extend(low_stock)
+        all_notifications.extend(due_soon_invoices)
         all_notifications.extend(overdue_payments)
         all_notifications.extend(expiring_products)
         all_notifications.extend(overdue_receivables)
@@ -2145,6 +2204,13 @@ def restore_backup(backup_id):
 def schedule_automatic_backups():
     """Programa backups automáticos diarios."""
     def daily_backup():
+        # Asegurar la conexión a la base de datos en este hilo
+        if not is_db_connected():
+            conectar_db()
+        
+        if not is_db_connected():
+            print("Error en backup automático: No se pudo conectar a la base de datos para iniciar el proceso.")
+            return
         try:
             backup_id = f"auto_backup_{datetime.now().strftime('%Y%m%d')}"
 

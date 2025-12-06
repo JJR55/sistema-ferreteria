@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+
+{% block title %}Historial de Ventas - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-clock-history"></i> Historial de Ventas{% endblock %}
+
+{% block breadcrumb %}Ventas / Historial{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Últimas Ventas Realizadas</h5>
+            <div class="input-group" style="width: 300px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="search-history-input" class="form-control" placeholder="Buscar por ID, cliente...">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID Venta</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Método de Pago</th>
+                            <th>Vendedor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-history-body">
+                        <!-- Las filas se insertarán aquí dinámicamente -->
+                        <tr>
+                            <td colspan="7" class="text-center p-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Cargando historial de ventas...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let allSales = [];
+
+    async function fetchSalesHistory() {
+        try {
+            const response = await fetch('/api/sales_history');
+            const result = await response.json();
+            if (result.success) {
+                allSales = result.sales;
+                renderSales(allSales);
+            } else {
+                document.getElementById('sales-history-body').innerHTML = `<tr><td colspan="7" class="text-center text-danger p-5">Error al cargar el historial: ${result.error}</td></tr>`;
+            }
+        } catch (error) {
+            console.error('Error fetching sales history:', error);
+            document.getElementById('sales-history-body').innerHTML = `<tr><td colspan="7" class="text-center text-danger p-5">Error de conexión al cargar el historial.</td></tr>`;
+        }
+    }
+
+    function renderSales(sales) {
+        const tbody = document.getElementById('sales-history-body');
+        tbody.innerHTML = '';
+
+        if (sales.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center p-5">No se encontraron ventas.</td></tr>`;
+            return;
+        }
+
+        sales.forEach(sale => {
+            const row = document.createElement('tr');
+            const saleDate = new Date(sale.fecha).toLocaleString('es-DO');
+            const total = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(sale.total);
+
+            row.innerHTML = `
+                <td><small>${sale._id}</small></td>
+                <td>${saleDate}</td>
+                <td>${sale.cliente_nombre || 'Consumidor Final'}</td>
+                <td class="fw-bold">${total}</td>
+                <td><span class="badge bg-secondary">${sale.tipo_pago}</span></td>
+                <td>${sale.vendedor_nombre || 'N/A'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary btn-reprint" data-id="${sale._id}" title="Reimprimir Ticket">
+                        <i class="bi bi-printer"></i> Reimprimir
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // Event listener para botones de reimprimir
+        document.querySelectorAll('.btn-reprint').forEach(button => {
+            button.addEventListener('click', function() {
+                const saleId = this.dataset.id;
+                window.open(\`/api/pos/print_ticket/\${saleId}\`, '_blank');
+            });
+        });
+    }
+
+    // Carga inicial
+    fetchSalesHistory();
+});
+</script>
+{% endblock %}

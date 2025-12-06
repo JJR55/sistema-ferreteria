@@ -1,37 +1,279 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuentas por Cobrar - Sistema Ferretería</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <div class="container-fluid mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1><i class="bi bi-file-earmark-arrow-up-fill"></i> Cuentas por Cobrar</h1>
-            <div>
-                <button class="btn btn-primary me-2" id="register-payment-btn">
-                    <i class="bi bi-cash"></i> Registrar Abono/Pago
-                </button>
-                <button class="btn btn-info" id="refresh-list-btn">
-                    <i class="bi bi-arrow-clockwise"></i> Actualizar Lista
-                </button>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary ms-2">
-                    <i class="bi bi-arrow-left-circle"></i> Volver al Dashboard
-                </a>
+{% extends "layout.html" %}
+
+{% block title %}Cuentas por Cobrar - Sistema Ferretería{% endblock %}
+
+{% block page_title %}<i class="bi bi-file-earmark-arrow-up-fill"></i> Cuentas por Cobrar{% endblock %}
+
+{% block breadcrumb %}Cuentas por Cobrar{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <button class="btn btn-primary me-2" id="register-payment-btn">
+                <i class="bi bi-cash"></i> Registrar Abono/Pago
+            </button>
+            <button class="btn btn-info" id="refresh-list-btn">
+                <i class="bi bi-arrow-clockwise"></i> Actualizar Lista
+            </button>
+        </div>
+    </div>
+
+    <!-- Pestañas de Navegación -->
+    <ul class="nav nav-tabs mb-4" id="receivableTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-content" type="button" role="tab" aria-controls="pending-content" aria-selected="true">
+                <i class="bi bi-hourglass-split"></i> Pendientes
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="paid-tab" data-bs-toggle="tab" data-bs-target="#paid-content" type="button" role="tab" aria-controls="paid-content" aria-selected="false">
+                <i class="bi bi-check-circle"></i> Historial de Pagadas
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de las Pestañas -->
+    <div class="tab-content" id="receivableTabsContent">
+        <!-- Pestaña de Pendientes -->
+        <div class="tab-pane fade show active" id="pending-content" role="tabpanel" aria-labelledby="pending-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Facturas Pendientes de Cobro</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID Factura</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Saldo Pendiente</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accounts-receivable-body">
+                                <!-- Las filas se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
+        <!-- Pestaña de Pagadas -->
+        <div class="tab-pane fade" id="paid-content" role="tabpanel" aria-labelledby="paid-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-archive"></i> Historial de Facturas Cobradas</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID Factura</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>Total Cobrado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paid-accounts-body">
+                                <!-- Historial se cargará aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+<!-- Modal para Registrar Pago -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">Registrar Abono/Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="selected-invoice-info" class="alert alert-info mb-3"></div>
+                <form id="payment-form">
+                    <div class="mb-3">
+                        <label for="payment-amount" class="form-label">Monto a Abonar</label>
+                        <input type="number" class="form-control" id="payment-amount" step="0.01" min="0.01" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="register-payment-submit-btn">Registrar Pago</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    let accountsReceivable = [];
+    let selectedInvoice = null;
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(value);
+    }
+
+    async function fetchAccountsReceivable() {
+        const response = await fetch('/api/accounts_receivable');
+        accountsReceivable = await response.json();
+        renderAccountsReceivable();
+    }
+
+    function renderAccountsReceivable() {
+        const tableBody = document.getElementById('accounts-receivable-body');
+        tableBody.innerHTML = '';
+
+        accountsReceivable.forEach(account => {
+            const row = document.createElement('tr');
+            // Botones: Ver/Imprimir (abre la vista HTML) y Descargar PDF
+            const viewBtn = `<a class="btn btn-sm btn-outline-primary me-1" target="_blank" href="/api/pos/print_ticket/${account.venta_id}"><i class="bi bi-eye"></i> Ver</a>`;
+            const pdfBtn = `<a class="btn btn-sm btn-outline-secondary me-1" target="_blank" href="/api/pos/print_ticket_pdf/${account.venta_id}"><i class="bi bi-file-earmark-pdf"></i> PDF</a>`;
+            const payBtn = account.saldo_pendiente > 0 ? `<button class="btn btn-sm btn-success pay-btn" data-invoice-id="${account.venta_id}" data-client="${account.cliente_nombre}" data-balance="${account.saldo_pendiente}"><i class="bi bi-cash"></i> Abonar</button>` : '<span class="badge bg-success">Pagada</span>';
+
+            row.innerHTML = `
+                <td>${account.venta_id}</td>
+                <td>${new Date(account.fecha).toLocaleDateString()}</td>
+                <td>${account.cliente_nombre}</td>
+                <td>${formatCurrency(account.total)}</td>
+                <td>${formatCurrency(account.saldo_pendiente)}</td>
+                <td>
+                    ${viewBtn}${pdfBtn}${payBtn}
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Agregar event listeners a los botones de pago
+        document.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const invoiceId = e.currentTarget.dataset.invoiceId;
+                const client = e.currentTarget.dataset.client;
+                const balance = parseFloat(e.currentTarget.dataset.balance);
+
+                selectedInvoice = {
+                    invoiceId: invoiceId,
+                    client: client,
+                    balance: balance
+                };
+
+                document.getElementById('selected-invoice-info').innerHTML = `
+                    <strong>Factura ID:</strong> ${invoiceId}<br>
+                    <strong>Cliente:</strong> ${client}<br>
+                    <strong>Saldo Pendiente:</strong> ${formatCurrency(balance)}
+                `;
+
+                document.getElementById('payment-amount').max = balance;
+                paymentModal.show();
+            });
+        });
+    }
+
+    async function fetchPaidAccounts() {
+        const response = await fetch('/api/accounts_receivable/paid');
+        const paidAccounts = await response.json();
+        renderPaidAccounts(paidAccounts);
+    }
+
+    function renderPaidAccounts(accounts) {
+        const tableBody = document.getElementById('paid-accounts-body');
+        tableBody.innerHTML = '';
+        accounts.forEach(account => {
+            const row = document.createElement('tr');
+            const viewBtn = `<a class="btn btn-sm btn-outline-primary me-1" target="_blank" href="/api/pos/print_ticket/${account.venta_id}"><i class="bi bi-eye"></i> Ver</a>`;
+            const pdfBtn = `<a class="btn btn-sm btn-outline-secondary me-1" target="_blank" href="/api/pos/print_ticket_pdf/${account.venta_id}"><i class="bi bi-file-earmark-pdf"></i> PDF</a>`;
+
+            row.innerHTML = `
+                <td>${account.venta_id}</td>
+                <td>${new Date(account.fecha).toLocaleDateString()}</td>
+                <td>${account.cliente_nombre}</td>
+                <td>${formatCurrency(account.total)}</td>
+                <td>${viewBtn}${pdfBtn}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    document.getElementById('register-payment-btn').addEventListener('click', () => {
+        // Mostrar instrucciones si no hay factura seleccionada
+        if (!accountsReceivable.some(acc => acc.saldo_pendiente > 0)) {
+            alert('No hay cuentas pendientes por cobrar.');
+            return;
+        }
+        alert('Por favor, selecciona una factura de la lista y presiona "Abonar".');
+    });
+
+    document.getElementById('refresh-list-btn').addEventListener('click', () => {
+        fetchAccountsReceivable();
+        // Si la pestaña de pagadas está activa, también la refresca
+        if (document.getElementById('paid-tab').classList.contains('active')) {
+            fetchPaidAccounts();
+        }
+    });
+
+    document.getElementById('register-payment-submit-btn').addEventListener('click', async () => {
+        if (!selectedInvoice) return;
+
+        const amount = parseFloat(document.getElementById('payment-amount').value);
+        if (!amount || amount <= 0) {
+            alert('Por favor ingrese un monto válido.');
+            return;
+        }
+
+        if (amount > selectedInvoice.balance) {
+            alert('El monto no puede exceder el saldo pendiente.');
+            return;
+        }
+
+        if (confirm(`¿Confirmar abono de ${formatCurrency(amount)} para la factura ${selectedInvoice.invoiceId}?`)) {
+            try {
+                const response = await fetch('/api/accounts_receivable/pay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        invoice_id: selectedInvoice.invoiceId,
+                        amount_paid: amount
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    paymentModal.hide();
+                    document.getElementById('payment-form').reset();
+                    fetchAccountsReceivable();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert('Error de conexión.');
+                console.error(error);
+            }
+        }
+    });
+
+    // Cargar historial al cambiar a la pestaña "Pagadas"
+    document.getElementById('paid-tab').addEventListener('shown.bs.tab', function () {
+        fetchPaidAccounts();
+    });
+
+    fetchAccountsReceivable();
+</script>
+{% endblock %}
                             <tr>
                                 <th>ID Factura</th>
                                 <th>Fecha</th>

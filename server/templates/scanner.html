@@ -96,10 +96,17 @@
                             <div class="card-body">
                                 <p class="text-muted">Sube una foto clara de la factura o usa la cámara de tu dispositivo.</p>
                                 <div class="input-group mb-3">
-                                    <input type="file" class="form-control" id="invoice-image-upload" accept="image/*">
+                                    <input type="file" class="form-control" id="invoice-image-upload" accept="image/*" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                    <button class="btn btn-outline-secondary" type="button" id="take-photo-btn"><i class="bi bi-camera-fill"></i> Tomar Foto</button>
                                 </div>
+                                <!-- Contenedor para la cámara -->
+                                <div id="camera-container" class="mb-3" style="display: none;">
+                                    <video id="camera-stream" width="100%" autoplay playsinline></video>
+                                    <button class="btn btn-success w-100 mt-2" id="capture-btn">Capturar Imagen</button>
+                                </div>
+
                                 <div class="d-grid">
-                                    <button class="btn btn-primary" id="process-image-btn" disabled>
+                                    <button class="btn btn-primary" id="process-image-btn" disabled data-bs-toggle="tooltip" data-bs-placement="top" title="Seleccione una imagen para activar">
                                         <i class="bi bi-gear-fill"></i> Procesar Imagen
                                     </button>
                                 </div>
@@ -211,4 +218,120 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
 <script src="{{ url_for('static', filename='js/invoice_scanner.js') }}"></script>
+
+<script>
+    // --- FUNCIONES GLOBALES ACCESIBLES ---
+    // Delegador ligero: llama al handler principal definido en `static/js/scanner.js`
+    function confirmarIngresoStock() {
+        const btn = document.getElementById('confirm-stock');
+        if (btn) btn.click();
+    }
+
+    function playBeep(success = true) {
+        if ('AudioContext' in window || 'webkitAudioContext' in window) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(success ? 900 : 300, audioContext.currentTime);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.15);
+        }
+    }
+
+    // --- LÓGICA PRINCIPAL ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // Activar cámara del escáner de productos automáticamente
+        const activateCameraButton = document.getElementById('activate-camera-btn');
+        if (activateCameraButton) {
+            // Simular clic para iniciar la cámara al cargar la página
+            activateCameraButton.click();
+        }
+
+        // Lógica del escáner de facturas
+        const invoiceImageUpload = document.getElementById('invoice-image-upload');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const processImageBtn = document.getElementById('process-image-btn');
+        const processBtnTooltip = new bootstrap.Tooltip(processImageBtn); // Initialize tooltip
+
+        // --- Lógica para habilitar el botón de procesar imagen al seleccionar un archivo ---
+        if (invoiceImageUpload) {
+            invoiceImageUpload.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreviewContainer.style.display = 'block';
+                        processImageBtn.disabled = false;
+                        processBtnTooltip.hide(); // Hide tooltip when enabled
+                        stopCamera(); // Stop camera if a file is selected
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    imagePreview.src = '#';
+                    imagePreviewContainer.style.display = 'none';
+                    processImageBtn.disabled = true;
+                    processBtnTooltip.show(); // Show tooltip when disabled
+                }
+            });
+        }
+
+        // --- Lógica para tomar foto ---
+        const takePhotoButton = document.getElementById('take-photo-btn');
+        const cameraContainer = document.getElementById('camera-container');
+        const videoElement = document.getElementById('camera-stream');
+        const captureButton = document.getElementById('capture-btn');
+        let stream = null;
+
+        async function startCamera() {
+            try {
+                if (stream) {
+                    stopCamera(); // Stop any existing stream
+                }
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                videoElement.srcObject = stream;
+                cameraContainer.style.display = 'block';
+                imagePreviewContainer.style.display = 'none'; // Hide file preview
+                invoiceImageUpload.value = ''; // Clear file input
+                processImageBtn.disabled = true; // Disable process button until photo is captured
+                processBtnTooltip.show();
+            } catch (err) {
+                console.error("Error al acceder a la cámara: ", err);
+                alert("No se pudo acceder a la cámara. Asegúrate de haber otorgado los permisos.");
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraContainer.style.display = 'none';
+        }
+
+        if (takePhotoButton) {
+            takePhotoButton.addEventListener('click', startCamera);
+        }
+
+        if (captureButton) {
+            captureButton.addEventListener('click', () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                imagePreview.src = canvas.toDataURL('image/jpeg');
+                imagePreviewContainer.style.display = 'block';
+                processImageBtn.disabled = false;
+                processBtnTooltip.hide();
+                stopCamera();
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -164,13 +164,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
-```
-
-### 2. Corrección y Limpieza de `scanner.html`
-
-He limpiado y corregido el archivo `scanner.html` para que tenga la estructura de pestañas correcta, eliminando todo el código duplicado y desordenado. Ahora la página se mostrará correctamente con las dos pestañas: "Escáner de Productos" y "Escáner de Facturas".
-
-```diff
---- a/c:\Users\Administrator\Documents\Sistema\server\templates\scanner.html
-+++ b/c:\Users\Administrator\Documents\Sistema\server\templates\scanner.html

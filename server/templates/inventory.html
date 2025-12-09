@@ -407,6 +407,78 @@
     </div>
 </div>
 
+<!-- Modal para Agregar Artículo Manual a la Lista de Compras -->
+<div class="modal fade" id="addManualItemModal" tabindex="-1" aria-labelledby="addManualItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addManualItemModalLabel"><i class="bi bi-plus-circle"></i> Agregar Artículo Manual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="manual-shopping-item-form">
+                    <div class="mb-3">
+                        <label for="manual-item-description" class="form-label">Descripción del Artículo</label>
+                        <input type="text" class="form-control" id="manual-item-description" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="manual-item-quantity" class="form-label">Cantidad a Comprar</label>
+                        <input type="number" class="form-control" id="manual-item-quantity" min="1" value="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="manual-item-department" class="form-label">Departamento</label>
+                        <select class="form-select" id="manual-item-department" required>
+                            <option value="">Seleccione un departamento</option>
+                            <option value="Ferretería">Ferretería</option>
+                            <option value="Repuestos">Repuestos</option>
+                            <option value="Hogar">Hogar</option>
+                            <option value="Electricidad">Electricidad</option>
+                            <option value="Plomería">Plomería</option>
+                            <option value="Sin departamento">Sin departamento</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="save-manual-shopping-item-btn">
+                    <i class="bi bi-plus-lg"></i> Agregar a la Lista
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Vincular Artículo Manual con Inventario -->
+<div class="modal fade" id="linkItemModal" tabindex="-1" aria-labelledby="linkItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="linkItemModalLabel"><i class="bi bi-link-45deg"></i> Vincular Artículo Manual con Inventario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Vas a vincular el artículo: <strong id="manual-item-name-to-link"></strong></p>
+                <input type="hidden" id="manual-item-id-to-link">
+                
+                <div class="mb-3">
+                    <label for="link-item-search" class="form-label">Buscar producto en inventario:</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="link-item-search" class="form-control" placeholder="Buscar por nombre o código...">
+                    </div>
+                </div>
+
+                <div id="link-item-search-results" class="list-group" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Resultados de la búsqueda aparecerán aquí -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 <style>
@@ -1239,9 +1311,7 @@ body.dark-mode .department-badge {
                         <input type="number" class="form-control form-control-sm shopping-list-qty" data-id="${productId}" value="${item.quantityToBuy}" min="1">
                     </td>
                     <td class="text-center">
-                        <button class="btn btn-danger btn-sm remove-shopping-item" data-id="${productId}" title="Quitar de la lista">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
+                        <div class="d-flex gap-1">${actionButtons}</div>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -1297,6 +1367,13 @@ body.dark-mode .department-badge {
             delete shoppingList[productId];
             saveShoppingList();
             renderShoppingList();
+            return; // Detener para no activar otros listeners
+        }
+
+        const linkBtn = e.target.closest('.link-inventory-item-btn');
+        if (linkBtn) {
+            const manualId = linkBtn.dataset.id;
+            openLinkModal(manualId);
         }
     });
 

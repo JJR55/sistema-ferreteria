@@ -1303,6 +1303,20 @@ body.dark-mode .department-badge {
             for (const productId in shoppingList) {
                 const item = shoppingList[productId];
                 const row = document.createElement('tr');
+
+                let actionButtons = `
+                    <button class="btn btn-danger btn-sm remove-shopping-item" data-id="${productId}" title="Quitar de la lista">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                `;
+                if (item.isManual) {
+                    actionButtons += `
+                        <button class="btn btn-info btn-sm link-inventory-item-btn" data-id="${productId}" title="Vincular a Inventario">
+                            <i class="bi bi-link-45deg"></i>
+                        </button>
+                    `;
+                }
+
                 row.innerHTML = `
                     <td>${item.product.nombre} ${item.isManual ? '<span class="badge bg-secondary ms-2">Manual</span>' : ''}</td> 
                     <td class="text-center">${item.product.stock !== undefined ? item.product.stock : 'N/A'}</td> 
@@ -1311,7 +1325,7 @@ body.dark-mode .department-badge {
                         <input type="number" class="form-control form-control-sm shopping-list-qty" data-id="${productId}" value="${item.quantityToBuy}" min="1">
                     </td>
                     <td class="text-center">
-                        <div class="d-flex gap-1">${actionButtons}</div>
+                        <div class="d-flex justify-content-center gap-1">${actionButtons}</div>
                     </td>
                 `;
                 tableBody.appendChild(row);

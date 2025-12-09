@@ -29,6 +29,7 @@
                         <li><a class="dropdown-item" href="#" id="export-low-stock-csv-btn"><i class="bi bi-filetype-csv"></i> Stock Bajo</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" id="export-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Completo</a></li>
+                        <li><a class="dropdown-item" href="#" id="export-pdf-by-dept-btn" data-bs-toggle="modal" data-bs-target="#exportInventoryByDeptModal"><i class="bi bi-file-earmark-pdf"></i> PDF Por Departamento</a></li>
                         <li><a class="dropdown-item" href="#" id="export-low-stock-pdf-btn"><i class="bi bi-file-earmark-pdf"></i> PDF Stock Bajo</a></li>
                     </ul>
                 </div>
@@ -115,52 +116,117 @@
         </div>
     </div>
 
-    <!-- Tabla de productos -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="bi bi-list-ul text-primary"></i> Lista de Productos
-                        </h5>
-                        <div id="table-info" class="text-muted small">
-                            <!-- Información dinámica se cargará aquí -->
+    <!-- Pestañas de Navegación del Inventario -->
+    <ul class="nav nav-tabs mb-3" id="inventoryTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-pane" type="button" role="tab" aria-controls="products-pane" aria-selected="true">
+                <i class="bi bi-list-ul"></i> Lista de Productos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="shopping-list-tab" data-bs-toggle="tab" data-bs-target="#shopping-list-pane" type="button" role="tab" aria-controls="shopping-list-pane" aria-selected="false">
+                <i class="bi bi-cart-plus-fill text-warning"></i> Lista de Compras Urgente
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de las Pestañas -->
+    <div class="tab-content" id="inventoryTabContent">
+        <!-- Pestaña: Lista de Productos -->
+        <div class="tab-pane fade show active" id="products-pane" role="tabpanel" aria-labelledby="products-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-list-ul text-primary"></i> Lista de Productos
+                                </h5>
+                                <div id="table-info" class="text-muted small">
+                                    <!-- Información dinámica se cargará aquí -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width: 40px;">
+                                                <input type="checkbox" id="select-all-checkbox" title="Seleccionar todos">
+                                            </th>
+                                            <th>Código</th>
+                                            <th>Descripción</th>
+                                            <th>Precio Costo (RD$)</th>
+                                            <th>Precio Venta (RD$)</th>
+                                            <th style="width: 8%;">Stock</th>
+                                            <th>Inv. Mínimo</th>
+                                            <th style="width: 12%;">Departamento</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventory-table-body">
+                                        <!-- Las filas se insertarán aquí con JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-center py-5" id="empty-state" style="display: none;">
+                                <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted mt-3">No hay productos</h5>
+                                <p class="text-muted">Comienza agregando productos al inventario</p>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+                                    <i class="bi bi-plus-circle"></i> Agregar Primer Producto
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="card-body p-0">
+            </div>
+        </div>
+
+        <!-- Pestaña: Lista de Compras Urgente -->
+        <div class="tab-pane fade" id="shopping-list-pane" role="tabpanel" aria-labelledby="shopping-list-tab">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-diamond-fill"></i> Artículos para Compra Urgente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <div class="d-flex gap-2">
+                                <div class="input-group flex-grow-1">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" id="shopping-list-search" class="form-control" placeholder="Buscar producto para agregar a la lista...">
+                                </div>
+                                <button class="btn btn-primary" id="add-manual-shopping-item-btn" data-bs-toggle="modal" data-bs-target="#addManualItemModal" title="Agregar un artículo no existente">
+                                    <i class="bi bi-plus-circle"></i> Agregar Manual
+                                </button>
+                            </div>
+                            <div id="shopping-list-search-results" class="search-results" style="position: relative;"></div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-info me-2" id="export-shopping-list-pdf-btn" data-bs-toggle="modal" data-bs-target="#exportShoppingListPdfModal"><i class="bi bi-file-earmark-pdf"></i> Exportar PDF</button>
+                            <button class="btn btn-danger" id="clear-shopping-list-btn"><i class="bi bi-trash3-fill"></i> Limpiar Lista</button>
+                        </div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
+                        <table class="table">
+                            <thead>
                                 <tr>
-                                    <th class="text-center" style="width: 40px;">
-                                        <input type="checkbox" id="select-all-checkbox" title="Seleccionar todos">
-                                    </th>
-                                    <th>Código</th>
-                                    <th>Descripción</th>
-                                    <th>Precio Costo (RD$)</th>
-                                    <th>Precio Venta (RD$)</th>
-                                    <th style="width: 8%;">Stock</th>
-                                    <th>Inv. Mínimo</th>
-                                    <th style="width: 12%;">Departamento</th>
-                                    <th>Acciones</th>
+                                    <th>Producto</th>
+                                    <th style="width: 120px;">Stock Actual</th>
+                                    <th>Departamento</th>
+                                    <th style="width: 150px;">Cantidad a Comprar</th>
+                                    <th style="width: 80px;">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody id="inventory-table-body">
-                                <!-- Las filas se insertarán aquí con JS -->
+                            <tbody id="shopping-list-table-body">
+                                <!-- Los productos de la lista de compras se insertarán aquí -->
                             </tbody>
                         </table>
-                    </div>
-
-                    <!-- Mensaje cuando no hay productos -->
-                    <div class="text-center py-5" id="empty-state" style="display: none;">
-                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-                        <h5 class="text-muted mt-3">No hay productos</h5>
-                        <p class="text-muted">Comienza agregando productos al inventario</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
-                            <i class="bi bi-plus-circle"></i> Agregar Primer Producto
-                        </button>
+                        <div id="empty-shopping-list" class="text-center p-5 text-muted">
+                            <p>La lista de compras está vacía.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -296,6 +362,47 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Exportar Lista de Compras a PDF por Departamento -->
+<div class="modal fade" id="exportShoppingListPdfModal" tabindex="-1" aria-labelledby="exportShoppingListPdfModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportShoppingListPdfModalLabel"><i class="bi bi-file-earmark-pdf"></i> Exportar Lista de Compras a PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="export-shopping-list-department-filter" class="form-label">Filtrar por Departamento</label>
+                    <select class="form-select" id="export-shopping-list-department-filter">
+                        <option value="all">Todos los Departamentos</option>
+                        <option value="Ferretería">Ferretería</option>
+                        <option value="Repuestos">Repuestos</option>
+                        <option value="Hogar">Hogar</option>
+                        <option value="Electricidad">Electricidad</option>
+                        <option value="Plomería">Plomería</option>
+                        <option value="Sin departamento">Sin departamento</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirm-export-shopping-list-pdf-btn">
+                    <i class="bi bi-file-earmark-pdf"></i> Generar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Exportar Inventario a PDF por Departamento (existente, solo se añade el ID) -->
+<div class="modal fade" id="exportInventoryByDeptModal" tabindex="-1" aria-labelledby="exportInventoryByDeptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Contenido del modal para exportar inventario por departamento -->
         </div>
     </div>
 </div>
@@ -441,6 +548,10 @@ body.dark-mode .department-badge {
     const productModal = new bootstrap.Modal(document.getElementById('productModal'));
     const productForm = document.getElementById('product-form');
     const inventoryScannerModal = new bootstrap.Modal(document.getElementById('inventoryScannerModal'));
+    // Elementos para la nueva lista de compras
+    const shoppingListSearchInput = document.getElementById('shopping-list-search');
+    const shoppingListSearchResults = document.getElementById('shopping-list-search-results');
+    let shoppingList = {}; // { productId: { productData, quantityToBuy } }
     let isModalScannerActive = false;
 
     function formatCurrency(value) {
@@ -1094,6 +1205,228 @@ body.dark-mode .department-badge {
         updateSelectionCount();
     }
 
+    // --- LÓGICA PARA LA LISTA DE COMPRAS URGENTE ---
+
+    function loadShoppingList() {
+        const savedList = localStorage.getItem('urgentShoppingList');
+        if (savedList) {
+            shoppingList = JSON.parse(savedList);
+        }
+        renderShoppingList();
+    }
+
+    function saveShoppingList() {
+        localStorage.setItem('urgentShoppingList', JSON.stringify(shoppingList));
+    }
+
+    function renderShoppingList() {
+        const tableBody = document.getElementById('shopping-list-table-body');
+        const emptyMessage = document.getElementById('empty-shopping-list');
+        tableBody.innerHTML = '';
+
+        if (Object.keys(shoppingList).length === 0) {
+            emptyMessage.style.display = 'block';
+        } else {
+            emptyMessage.style.display = 'none';
+            for (const productId in shoppingList) {
+                const item = shoppingList[productId];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.product.nombre} ${item.isManual ? '<span class="badge bg-secondary ms-2">Manual</span>' : ''}</td> 
+                    <td class="text-center">${item.product.stock !== undefined ? item.product.stock : 'N/A'}</td> 
+                    <td>${item.product.departamento || 'Sin departamento'}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm shopping-list-qty" data-id="${productId}" value="${item.quantityToBuy}" min="1">
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-danger btn-sm remove-shopping-item" data-id="${productId}" title="Quitar de la lista">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            }
+        }
+    }
+
+    shoppingListSearchInput.addEventListener('keyup', async function(e) {
+        const term = e.target.value;
+        if (term.length < 3) {
+            shoppingListSearchResults.innerHTML = '';
+            return;
+        }
+        const filtered = allProducts.filter(p => p.nombre.toLowerCase().includes(term.toLowerCase()) || p.codigo_barras.toLowerCase().includes(term.toLowerCase()));
+        
+        shoppingListSearchResults.innerHTML = '';
+        const listGroup = document.createElement('div');
+        listGroup.className = 'list-group';
+
+        filtered.slice(0, 5).forEach(product => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = `${product.nombre} (Stock: ${product.stock})`;
+            item.onclick = (e) => {
+                e.preventDefault();
+                shoppingList[product.id] = { product: product, quantityToBuy: 1, isManual: false };
+                saveShoppingList();
+                renderShoppingList();
+                shoppingListSearchInput.value = '';
+                shoppingListSearchResults.innerHTML = '';
+            };
+            listGroup.appendChild(item);
+        });
+        shoppingListSearchResults.appendChild(listGroup);
+    });
+
+    document.getElementById('shopping-list-table-body').addEventListener('change', function(e) {
+        if (e.target.classList.contains('shopping-list-qty')) {
+            const productId = e.target.dataset.id;
+            const newQty = parseInt(e.target.value, 10);
+            if (shoppingList[productId] && newQty > 0) {
+                shoppingList[productId].quantityToBuy = newQty;
+                saveShoppingList();
+            }
+        }
+    });
+
+    document.getElementById('shopping-list-table-body').addEventListener('click', function(e) {
+        const removeBtn = e.target.closest('.remove-shopping-item');
+        if (removeBtn) {
+            const productId = removeBtn.dataset.id;
+            delete shoppingList[productId];
+            saveShoppingList();
+            renderShoppingList();
+        }
+    });
+
+    document.getElementById('clear-shopping-list-btn').addEventListener('click', function() {
+        if (confirm('¿Está seguro de que desea limpiar toda la lista de compras?')) {
+            shoppingList = {};
+            saveShoppingList();
+            renderShoppingList();
+        }
+    });
+
+    // --- LÓGICA PARA EXPORTAR LISTA DE COMPRAS A PDF CON FILTRO ---
+    document.getElementById('confirm-export-shopping-list-pdf-btn').addEventListener('click', function() {
+        const departmentFilter = document.getElementById('export-shopping-list-department-filter').value;
+        exportShoppingListToPdf(departmentFilter);
+    });
+
+    function exportShoppingListToPdf(departmentFilter = 'all') {
+        if (Object.keys(shoppingList).length === 0) {
+            alert('La lista de compras está vacía. No hay nada que exportar.');
+            return;
+        }
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 15;
+        let yPosition = 20; // Empezar un poco más abajo para el título
+
+        // Título
+        doc.setFontSize(18);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Lista de Compras Urgente', pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 8;
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Fecha de Generación: ${new Date().toLocaleDateString('es-DO')}`, pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 5;
+
+        if (departmentFilter !== 'all') {
+            doc.text(`Departamento: ${departmentFilter}`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 5;
+        }
+        
+        yPosition += 10; // Espacio antes de la tabla
+
+
+        // Cabeceras de la tabla
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0); // Negro para las cabeceras
+        const headers = ['Descripción', 'Stock', 'Depto.', 'Cantidad'];
+        const columnWidths = [80, 20, 40, 30]; // Anchos de columna
+        let xPosition = margin;
+
+        headers.forEach((header, index) => {
+            doc.text(header, xPosition, yPosition);
+            xPosition += columnWidths[index];
+        });
+        yPosition += 5;
+
+        // Línea bajo cabeceras
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 5;
+
+        // Contenido de la tabla
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0); // Negro para el contenido
+        let rowCount = 0;
+        const maxRowsPerPage = 45; // Ajustar según el tamaño de la fuente y el espaciado
+
+        const itemsToExport = Object.values(shoppingList).filter(item => {
+                        // Si el item es manual y no tiene departamento, o si el filtro es 'all', incluirlo.
+                        // Si tiene departamento, verificar si coincide con el filtro.
+            if (item.isManual && !item.product.departamento && departmentFilter === 'Sin departamento') return true;
+            if (item.isManual && !item.product.departamento && departmentFilter === 'all') return true;
+            if (item.product.departamento === 'Sin departamento' && departmentFilter === 'Sin departamento') return true;
+            return departmentFilter === 'all' || item.product.departamento === departmentFilter;
+        });
+
+        // Ordenar los items a exportar por departamento para el PDF
+        itemsToExport.sort((a, b) => {
+            const deptA = a.product.departamento || 'Sin departamento';
+            const deptB = b.product.departamento || 'Sin departamento';
+            return deptA.localeCompare(deptB);
+        });
+        
+        itemsToExport.forEach(item => {
+            const productName = item.product.nombre + (item.isManual ? ' (Manual)' : '');
+            const stockActual = item.product.stock !== undefined ? item.product.stock.toString() : 'N/A';
+            const departamento = item.product.departamento || 'Sin departamento';
+
+            if (rowCount >= maxRowsPerPage) {
+                doc.addPage();
+                yPosition = margin;
+                rowCount = 0;
+
+                // Repetir cabeceras en nueva página
+                doc.setFontSize(10);
+                xPosition = margin;
+                headers.forEach((header, index) => {
+                    doc.text(header, xPosition, yPosition);
+                    xPosition += columnWidths[index];
+                });
+                yPosition += 5;
+                doc.line(margin, yPosition, pageWidth - margin, yPosition);
+                yPosition += 5;
+                doc.setFontSize(8);
+            }
+
+            xPosition = margin;
+            const rowData = [
+                productName,
+                stockActual,
+                departamento,
+                item.quantityToBuy.toString()
+            ];
+            rowData.forEach((cell, index) => {
+                doc.text(cell, xPosition, yPosition);
+                xPosition += columnWidths[index];
+            });
+            yPosition += 7; // Espacio entre filas
+            rowCount++;
+        });
+        
+        doc.save(`lista_compras_urgente_${new Date().toISOString().split('T')[0]}.pdf`);
+        alert('✅ Lista de compras exportada a PDF exitosamente.');
+    }
+
     // Sobreescribir las funciones de filtro para incluir la lógica de selección
     const originalSearchListener = document.getElementById('inventory-search').addEventListener;
     const originalDepartmentListener = document.getElementById('department-filter').addEventListener;
@@ -1103,5 +1436,40 @@ body.dark-mode .department-badge {
 
     // Ejecutar fetchInventory para inicializar
     fetchInventory();
+    loadShoppingList(); // Cargar la lista de compras al iniciar
+
+    // --- LÓGICA PARA AGREGAR ARTÍCULO MANUAL ---
+    const addManualItemModal = new bootstrap.Modal(document.getElementById('addManualItemModal'));
+    const saveManualShoppingItemBtn = document.getElementById('save-manual-shopping-item-btn');
+
+    saveManualShoppingItemBtn.addEventListener('click', function() {
+        const descriptionInput = document.getElementById('manual-item-description');
+        const quantityInput = document.getElementById('manual-item-quantity');
+
+        const description = descriptionInput.value.trim();
+        const quantity = parseInt(quantityInput.value, 10);
+
+        // Nuevo: Obtener el departamento
+        const departmentSelect = document.getElementById('manual-item-department');
+        const department = departmentSelect.value;
+
+        if (!description || quantity <= 0 || isNaN(quantity) || department === '') {
+            alert('Por favor, ingrese una descripción válida, una cantidad mayor a cero y seleccione un departamento.');
+            return;
+        }
+
+        const manualProductId = `manual_${Date.now()}`; // ID único para el artículo manual
+        shoppingList[manualProductId] = {
+            product: { nombre: description, stock: 'N/A', departamento: department }, // Incluir departamento
+            quantityToBuy: quantity,
+            isManual: true
+        };
+
+        saveShoppingList();
+        renderShoppingList();
+        addManualItemModal.hide();
+        descriptionInput.value = '';
+        quantityInput.value = '1';
+    });
 </script>
 {% endblock %}

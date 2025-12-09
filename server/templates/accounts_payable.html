@@ -129,20 +129,43 @@
                     <h5 class="mb-0"><i class="bi bi-archive"></i> Historial de Facturas Pagadas</h5>
                 </div>
                 <div class="card-body p-0">
+                    <div class="p-3">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-4">
+                                <label for="paid-start-date" class="form-label visually-hidden">Fecha Inicio</label>
+                                <input type="date" class="form-control" id="paid-start-date" title="Fecha de inicio">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="paid-end-date" class="form-label visually-hidden">Fecha Fin</label>
+                                <input type="date" class="form-control" id="paid-end-date" title="Fecha de fin">
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary w-100" id="filter-paid-invoices-btn">
+                                    <i class="bi bi-funnel"></i> Filtrar Historial
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Proveedor</th>
                                     <th>No. Factura</th>
+                                    <th>Monto Pagado</th>
+                                    <th>Fecha Emisión</th>
                                     <th>Fecha Pago</th>
-                                    <th>Monto</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
-                            <tbody id="paid-invoices-body">
+                            <tbody id="paid-invoices-table-body">
                                 <!-- Historial se cargará aquí -->
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Mensaje cuando no hay facturas pagadas -->
+                    <div id="empty-paid-state" class="text-center p-5 text-muted" style="display: none;">
+                        <p>No hay facturas pagadas recientemente.</p>
                     </div>
                 </div>
             </div>
@@ -637,23 +660,65 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Cargar facturas pagadas al mostrar la pestaña de historial
+    async function fetchPaidInvoices() {
+        try {
+            const startDate = document.getElementById('paid-start-date').value;
+            const endDate = document.getElementById('paid-end-date').value;
+
+            let url = '/api/accounts_payable/paid';
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('No se pudo obtener facturas pagadas');
+            const paid = await resp.json();
+            renderPaidInvoices(paid);
+        } catch (err) {
+            console.error('Error cargando facturas pagadas:', err);
+        }
+    }
+
     function renderPaidInvoices(data) {
-        const tbody = document.getElementById('paid-invoices-body');
+        const tbody = document.getElementById('paid-invoices-table-body');
+        const emptyStateDiv = document.getElementById('empty-paid-state');
         tbody.innerHTML = '';
-        data.forEach(f => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${f.proveedor}</td>
-                <td>${f.numero_factura}</td>
-                <td>${f.fecha_pago ? new Date(f.fecha_pago).toLocaleDateString('es-DO') : ''}</td>
-                <td>${(f.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (f.monto || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            `;
-            tbody.appendChild(row);
-        });
+
+        if (data.length === 0) {
+            emptyStateDiv.style.display = 'block';
+            // Opcional: ocultar la tabla si no hay datos y solo mostrar el mensaje
+            // document.querySelector('#paid-invoices-table-container table').style.display = 'none';
+        } else {
+            emptyStateDiv.style.display = 'none';
+            // document.querySelector('#paid-invoices-table-container table').style.display = 'table';
+
+            data.forEach(f => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${f.proveedor}</td>
+                    <td>${f.numero_factura}</td>
+                    <td>${(f.moneda === 'USD' ? 'US$ ' : 'RD$ ') + (f.monto || 0).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>${f.fecha_emision ? new Date(f.fecha_emision).toLocaleDateString('es-DO') : ''}</td>
+                    <td>${f.fecha_pago ? new Date(f.fecha_pago).toLocaleDateString('es-DO') : ''}</td>
+                    <td><span class="badge bg-success">Pagada</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     }
 
     // Actualizar historial al cambiar a la pestaña "Pagadas"
     document.getElementById('paid-tab').addEventListener('shown.bs.tab', function () {
+        fetchPaidInvoices();
+    });
+
+    // Add event listener for the new filter button
+    document.getElementById('filter-paid-invoices-btn').addEventListener('click', function() {
         fetchPaidInvoices();
     });
 

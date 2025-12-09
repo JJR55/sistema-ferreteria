@@ -604,38 +604,43 @@ def api_scan_invoice_image():
         text = pytesseract.image_to_string(image, lang='spa') # 'spa' para español
 
         # Lógica de parsing simple para encontrar productos y precios
+        # Regex mejorado para encontrar precios (puede estar en cualquier lugar)
+        price_pattern = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
         items = []
-        # Regex para encontrar líneas con un precio al final (ej: 1,234.56 o 1234.56)
-        price_pattern = re.compile(r'([\d,]+\.\d{2})$')
 
         for line in text.split('\n'):
             line = line.strip()
             if not line:
                 continue
 
-            match = price_pattern.search(line)
-            if match:
+            # Encontrar todos los posibles precios en la línea
+            price_matches = price_pattern.findall(line)
+            if price_matches:
                 try:
-                    price_str = match.group(1).replace(',', '')
-                    price = float(price_str)
-                    
-                    # El resto de la línea es el nombre del producto (simplificación)
-                    name_part = line[:match.start()].strip()
-                    
-                    # Intentar extraer la cantidad del inicio de la línea
-                    quantity = 1
-                    quantity_match = re.match(r'^(\d+[\.,]?\d*)\s+', name_part)
-                    if quantity_match:
-                        try:
-                            quantity_str = quantity_match.group(1).replace(',', '.')
-                            quantity = float(quantity_str)
-                            # El nombre es lo que queda después de la cantidad
-                            name = name_part[quantity_match.end():].strip()
-                        except ValueError:
-                            name = name_part # Si falla, usar la parte completa como nombre
+                    # Asumir que el último número es el precio
+                    price_str = price_matches[-1].replace(',', '')
+                    price_val = float(price_str)
 
-                    if len(name) > 2: # Evitar líneas que solo son precios
-                        items.append({"nombre": name, "costo": price, "cantidad": quantity})
+                    # Extraer cantidad (si existe al principio)
+                    quantity = 1
+                    quantity_match = re.match(r'^(\d+)\s+', line)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+
+                    # Construir el nombre del producto eliminando el precio y la cantidad
+                    # Reemplazamos el precio y la cantidad (si se encontró) por un espacio
+                    name = line.replace(price_matches[-1], ' ')
+                    if quantity_match:
+                        name = name.replace(quantity_match.group(0), ' ', 1)
+
+                    # Limpiar el nombre: quitar números sueltos, caracteres especiales y espacios extra
+                    name = re.sub(r'\b\d+\b', '', name) # Quitar números que son palabras completas
+                    name = re.sub(r'[^\w\s-]', '', name) # Quitar caracteres no alfanuméricos (excepto guiones)
+                    name = ' '.join(name.split()).strip()
+
+                    # Asegurarse de que 'name' no sea None antes de llamar a len()
+                    if name and len(name) > 3: # Evitar líneas que son solo precios o códigos
+                        items.append({"nombre": name, "costo": price_val, "cantidad": quantity})
                 except (ValueError, IndexError):
                     continue
         

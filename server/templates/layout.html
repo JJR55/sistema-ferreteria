@@ -625,6 +625,9 @@
         </div>
     </div>
 
+    <!-- Socket.IO JS -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -850,6 +853,100 @@
                 document.getElementById('sidebar-overlay').classList.remove('show');
             }
         });
+
+        // --- WebSocket / Socket.IO for Real-time Notifications ---
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log('Conectado al servidor WebSocket');
+            socket.emit('join_notifications');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Desconectado del servidor WebSocket');
+        });
+
+        socket.on('notification', function(data) {
+            console.log('Nueva notificación:', data);
+            showRealtimeNotification(data);
+            updateNotificationsBadge();
+        });
+
+        function showRealtimeNotification(notification) {
+            // Crear notificación tipo toast
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '1055';
+
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${getPriorityColor(notification.priority)} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${notification.title}</strong><br>
+                        <small>${notification.message}</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+            document.body.appendChild(toastContainer);
+
+            // Mostrar el toast
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+
+            // Remover del DOM después de ocultarse
+            toast.addEventListener('hidden.bs.toast', function() {
+                toastContainer.remove();
+            });
+
+            // Reproducir sonido de notificación (opcional)
+            playNotificationSound();
+        }
+
+        function getPriorityColor(priority) {
+            const colors = {
+                'critical': 'danger',
+                'high': 'warning',
+                'medium': 'info',
+                'low': 'secondary'
+            };
+            return colors[priority] || 'secondary';
+        }
+
+        function playNotificationSound() {
+            // Crear un sonido simple de notificación
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('Audio no soportado');
+            }
+        }
+
+        function updateNotificationsBadge() {
+            // Actualizar el badge de notificaciones
+            fetchNotifications();
+        }
     </script>
 
     {% block extra_scripts %}{% endblock %}

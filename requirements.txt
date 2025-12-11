@@ -14,3 +14,6 @@ pyzbar
 opencv-python
 pillow
 numpy
+flask-socketio
+eventlet
+scipy

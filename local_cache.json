@@ -116,7 +116,7 @@
             "nombre": "Cemento Abro Azul Pvc 120ml/4oz",
             "costo": 225.0,
             "precio": 225.0,
-            "stock": 12,
+            "stock": 1,
             "stock_minimo": 0,
             "departamento": "Plomería",
             "unidad_medida": "Unidad"
@@ -688,7 +688,7 @@
             "nombre": "Breaker Europa G-Ii 10 Amp 1p",
             "costo": 100.0,
             "precio": 100.0,
-            "stock": 18,
+            "stock": 10,
             "stock_minimo": 0,
             "departamento": "Electricidad",
             "unidad_medida": "Unidad"
@@ -732,7 +732,7 @@
             "nombre": "Breaker Europa G-Ii 25 Amp 1p",
             "costo": 125.0,
             "precio": 125.0,
-            "stock": 21,
+            "stock": 19,
             "stock_minimo": 0,
             "departamento": "Electricidad",
             "unidad_medida": "Unidad"
@@ -3048,17 +3048,6 @@
             "unidad_medida": "Unidad"
         },
         {
-            "_id": "692ee834d040180750a5b2c7",
-            "codigo_barras": "",
-            "nombre": "Lija De Agua Microfina Grano 1",
-            "costo": 0,
-            "precio": 0,
-            "stock": 0,
-            "stock_minimo": 0,
-            "departamento": "0",
-            "unidad_medida": "Unidad"
-        },
-        {
             "_id": "692ee834d040180750a5b2c8",
             "codigo_barras": "",
             "nombre": "Lija De Esmeril",
@@ -4346,17 +4335,6 @@
             "unidad_medida": "Unidad"
         },
         {
-            "_id": "692ee83ad040180750a5b340",
-            "codigo_barras": "",
-            "nombre": "50",
-            "costo": 0,
-            "precio": 0,
-            "stock": 0,
-            "stock_minimo": 0,
-            "departamento": "00 Und Bombillo Bajo Cons Coral 2u-18 W(Cajita)**",
-            "unidad_medida": "Unidad"
-        },
-        {
             "_id": "692ee83ad040180750a5b341",
             "codigo_barras": "",
             "nombre": "15) 100.00 Und Tornillo Hexag Negro A) 1/4 X D) 1 1/2 Rosca Corrida",
@@ -4969,7 +4947,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -4980,7 +4958,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -4991,7 +4969,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5002,7 +4980,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5013,7 +4991,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5024,7 +5002,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5035,7 +5013,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5046,7 +5024,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "93",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5057,7 +5035,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5068,7 +5046,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "152",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5079,7 +5057,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5090,7 +5068,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5101,7 +5079,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "11",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5112,7 +5090,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5123,7 +5101,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "10",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5134,7 +5112,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5145,7 +5123,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5156,7 +5134,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5167,7 +5145,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5178,7 +5156,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "35",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5189,7 +5167,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5200,7 +5178,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5211,7 +5189,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5222,7 +5200,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5233,7 +5211,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5244,7 +5222,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "-",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5255,7 +5233,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5266,7 +5244,7 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "0",
+            "departamento": "Electricidad",
             "unidad_medida": "Unidad"
         },
         {
@@ -5277,30 +5255,345 @@
             "precio": 0,
             "stock": 0,
             "stock_minimo": 0,
-            "departamento": "",
+            "departamento": "Electricidad",
+            "unidad_medida": "Unidad"
+        },
+        {
+            "_id": "6934713cc1811598c2a87452",
+            "codigo_barras": "0790210047147",
+            "nombre": "Silicón Transparente Abro 3OZ",
+            "costo": 0.0,
+            "precio": 135.0,
+            "stock": 1,
+            "stock_minimo": 24,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "693477ac90b9010c7818e0c6",
+            "codigo_barras": "",
+            "nombre": "Nuevo Producto (0790920045228)",
+            "costo": 0.0,
+            "precio": 0.0,
+            "stock": 1,
+            "stock_minimo": 1,
+            "departamento": "Sin Asignar",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be8",
+            "codigo_barras": "",
+            "nombre": "Caja Bola 6202 Rudra",
+            "costo": 32.0,
+            "precio": 60.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bec",
+            "codigo_barras": "",
+            "nombre": "Tornillo 10X1 Acero",
+            "costo": 2.41,
+            "precio": 1.0,
+            "stock": 100,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bed",
+            "codigo_barras": "",
+            "nombre": "Tubo Bicicleta #16 Rudra",
+            "costo": 110.0,
+            "precio": 150.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be0",
+            "codigo_barras": "",
+            "nombre": "Tubo 350X10 M5",
+            "costo": 260.0,
+            "precio": 350.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be2",
+            "codigo_barras": "",
+            "nombre": "Abraza Plastica #8",
+            "costo": 0.64,
+            "precio": 2.0,
+            "stock": 100,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be5",
+            "codigo_barras": "",
+            "nombre": "Cadena Bicicleta MTB 116L",
+            "costo": 140.0,
+            "precio": 200.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bdc",
+            "codigo_barras": "",
+            "nombre": "Bujía C6HSA C70 Gato",
+            "costo": 115.0,
+            "precio": 160.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bee",
+            "codigo_barras": "",
+            "nombre": "Tubo Bicicleta #24 Rudra",
+            "costo": 120.0,
+            "precio": 175.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bdb",
+            "codigo_barras": "",
+            "nombre": "Bujía AX 100 Gato",
+            "costo": 115.0,
+            "precio": 160.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bdf",
+            "codigo_barras": "",
+            "nombre": "Tubo 275X18 Rudra",
+            "costo": 165.0,
+            "precio": 250.0,
+            "stock": 15,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be4",
+            "codigo_barras": "",
+            "nombre": "Banda Disco G2 - Gato",
+            "costo": 105.0,
+            "precio": 150.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bea",
+            "codigo_barras": "",
+            "nombre": "Carretel Hierro Trc Bic 36H NIQ",
+            "costo": 143.0,
+            "precio": 200.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bde",
+            "codigo_barras": "",
+            "nombre": "Tubo 250X17 Rudra",
+            "costo": 160.0,
+            "precio": 225.0,
+            "stock": 15,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be1",
+            "codigo_barras": "",
+            "nombre": "Abraza Plastica #10",
+            "costo": 1.41,
+            "precio": 5.0,
+            "stock": 100,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be6",
+            "codigo_barras": "",
+            "nombre": "Caja Bola 6200 Rudra",
+            "costo": 25.0,
+            "precio": 50.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be7",
+            "codigo_barras": "",
+            "nombre": "Caja Bola 6201 Scorpion",
+            "costo": 28.0,
+            "precio": 50.0,
+            "stock": 20,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603bdd",
+            "codigo_barras": "",
+            "nombre": "Tubo 275/300x17",
+            "costo": 231.0,
+            "precio": 325.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be9",
+            "codigo_barras": "",
+            "nombre": "Caja Bola 6203 Rudra",
+            "costo": 42.0,
+            "precio": 65.0,
+            "stock": 10,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603be3",
+            "codigo_barras": "",
+            "nombre": "Arandela Plana #10",
+            "costo": 0.61,
+            "precio": 2.0,
+            "stock": 200,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6934aa5b2a1ff3f999603beb",
+            "codigo_barras": "",
+            "nombre": "Simple Bicicleta Corto",
+            "costo": 153.0,
+            "precio": 250.0,
+            "stock": 6,
+            "stock_minimo": 1,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "69389173c3c045ca6fe472e7",
+            "codigo_barras": "",
+            "nombre": "Nuevo Producto (7593826012805)",
+            "costo": 0.0,
+            "precio": 0.0,
+            "stock": 1,
+            "stock_minimo": 1,
+            "departamento": "Sin Asignar",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "69389173c3c045ca6fe472e8",
+            "codigo_barras": "",
+            "nombre": "Nuevo Producto (7460104503907)",
+            "costo": 0.0,
+            "precio": 0.0,
+            "stock": 1,
+            "stock_minimo": 1,
+            "departamento": "Sin Asignar",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "69389173c3c045ca6fe472e9",
+            "codigo_barras": "",
+            "nombre": "Nuevo Producto (7891435937954)",
+            "costo": 0.0,
+            "precio": 0.0,
+            "stock": 2,
+            "stock_minimo": 1,
+            "departamento": "Sin Asignar",
+            "unidad_medida": "Unidad",
+            "is_new": true
+        },
+        {
+            "_id": "6939a3a9fdce2cb0cad3b2e2",
+            "codigo_barras": "75731011748",
+            "nombre": "Aceite Kendall 4T",
+            "costo": 0.0,
+            "precio": 400.0,
+            "stock": 3,
+            "stock_minimo": 6,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad"
+        },
+        {
+            "_id": "6939a3f2fdce2cb0cad3b2e3",
+            "codigo_barras": "7502240724805",
+            "nombre": "Aceite Quaker 15W-40",
+            "costo": 0.0,
+            "precio": 375.0,
+            "stock": 20,
+            "stock_minimo": 16,
+            "departamento": "Repuestos",
+            "unidad_medida": "Unidad"
+        },
+        {
+            "_id": "693ad823c50e9a5e2b45a6b6",
+            "codigo_barras": "TEMP-1765464099539",
+            "nombre": "Pintura Spray Negra C/Brillo Abro",
+            "costo": 0.0,
+            "precio": 0.0,
+            "stock": 0,
+            "stock_minimo": 0,
+            "departamento": "Repuestos",
             "unidad_medida": "Unidad"
         }
     ],
     "clientes": [],
     "proveedores": [
-        {
-            "_id": "692f57e5803f1456ca5c586f",
-            "nombre": "Manuel Corripio",
-            "rnc": null,
-            "telefono": null
-        },
-        {
-            "_id": "692f57ed803f1456ca5c5870",
-            "nombre": "Manuel Corripio",
-            "rnc": null,
-            "telefono": null
-        },
-        {
-            "_id": "692f5801803f1456ca5c5871",
-            "nombre": "Manuel Corripio",
-            "rnc": null,
-            "telefono": null
-        },
         {
             "_id": "692f587e803f1456ca5c5872",
             "nombre": "Manuel Corripio",
@@ -5398,5 +5691,5 @@
             "telefono": "555-1234"
         }
     ],
-    "timestamp": "2025-12-04T14:14:50.666546"
+    "timestamp": "2025-12-11T12:35:28.912317"
 }

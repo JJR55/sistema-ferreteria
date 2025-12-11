@@ -9,6 +9,7 @@ sys.path.append(str(ROOT_PATH))
 
 from flask import Flask, jsonify, render_template, request, send_file
 from flask import session, redirect, url_for, flash
+from flask_socketio import SocketIO, emit
 from bson import ObjectId
 from database.database import *
 from gui.security import check_password # Importamos la función para verificar contraseñas
@@ -31,6 +32,9 @@ import numpy as np
 # Inicializar la aplicación Flask
 app = Flask(__name__, template_folder=str(Path(__file__).parent / 'templates'), static_folder=str(Path(__file__).parent / 'static'))
 app.secret_key = 'una-clave-secreta-muy-segura-y-dificil-de-adivinar' # Necesario para usar sesiones
+
+# Inicializar SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Import opcional de opencv (cv2)
 try:
@@ -55,10 +59,10 @@ except ImportError:
 # Import opcional de pytesseract
 try:
     import pytesseract
-    # Si usas Windows, podrías necesitar especificar la ruta al ejecutable de Tesseract
-    # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    # Configurar la ruta de Tesseract para Windows
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
     PYTESSERACT_AVAILABLE = True
-    print("Pytesseract disponible: escaneo de facturas activo.")
+    print("✅ Pytesseract disponible: escaneo de facturas activo.")
 except ImportError:
     pytesseract = None
     PYTESSERACT_AVAILABLE = False
@@ -73,6 +77,52 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+# --- FUNCIONES DE NOTIFICACIONES EN TIEMPO REAL ---
+def notify_sale_registered(sale_id, total):
+    """Notifica cuando se registra una venta."""
+    try:
+        notification = {
+            'type': 'sale_registered',
+            'title': 'Nueva Venta Registrada',
+            'message': f'Venta #{sale_id} registrada por RD$ {total:.2f}',
+            'sale_id': sale_id,
+            'priority': 'low',
+            'timestamp': datetime.now().isoformat()
+        }
+        socketio.emit('notification', notification)
+    except Exception as e:
+        print(f"Error enviando notificación de venta: {e}")
+
+def notify_low_stock(producto):
+    """Notifica cuando un producto tiene stock bajo."""
+    try:
+        notification = {
+            'type': 'low_stock',
+            'title': 'Producto con Stock Bajo',
+            'message': f'El producto "{producto.get("nombre", "N/A")}" tiene stock bajo.',
+            'product_id': str(producto.get('_id')),
+            'priority': 'high',
+            'timestamp': datetime.now().isoformat()
+        }
+        socketio.emit('notification', notification)
+    except Exception as e:
+        print(f"Error enviando notificación de stock bajo: {e}")
+
+def notify_overdue_payment(factura):
+    """Notifica sobre pagos vencidos."""
+    try:
+        notification = {
+            'type': 'overdue_payment',
+            'title': 'Pago Vencido',
+            'message': f'Factura {factura.get("numero_factura", "N/A")} de {factura.get("proveedor_nombre", "Proveedor")} está vencida.',
+            'factura_id': str(factura.get('_id')),
+            'priority': 'critical',
+            'timestamp': datetime.now().isoformat()
+        }
+        socketio.emit('notification', notification)
+    except Exception as e:
+        print(f"Error enviando notificación de pago vencido: {e}")
 
 # --- Rutas de Authentication ---
 
@@ -600,8 +650,8 @@ def api_scan_image():
 @login_required
 def api_scan_invoice_image():
     """
-    Recibe la imagen de una factura, extrae texto con OCR y intenta parsear
-    los productos y precios.
+    Recibe la imagen de una factura, extrae texto con OCR mejorado y parsea productos y precios.
+    Incluye preprocesamiento de imagen y mejor parsing.
     """
     if not PYTESSERACT_AVAILABLE:
         return jsonify({"success": False, "error": "El servidor no tiene Pytesseract instalado para leer facturas."}), 500
@@ -611,58 +661,194 @@ def api_scan_invoice_image():
 
     file = request.files['invoice_image']
     try:
-        # Leer la imagen
+        # Leer la imagen con PIL
         image = Image.open(file.stream)
 
-        # Extraer texto usando Tesseract
-        text = pytesseract.image_to_string(image, lang='spa') # 'spa' para español
+        # --- PREPROCESAMIENTO MEJORADO DE IMAGEN ---
+        # Convertir a escala de grises si no lo está
+        if image.mode != 'L':
+            image = image.convert('L')
 
-        # Lógica de parsing simple para encontrar productos y precios
-        # Regex mejorado para encontrar precios (puede estar en cualquier lugar)
-        price_pattern = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
+        # Mejorar contraste y nitidez usando filtros
+        from PIL import ImageFilter, ImageEnhance
+
+        # Aplicar filtro de nitidez
+        image = image.filter(ImageFilter.UnsharpMask(radius=1, percent=150, threshold=3))
+
+        # Mejorar contraste
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(2.0)
+
+        # Aplicar filtro de reducción de ruido
+        image = image.filter(ImageFilter.MedianFilter(size=3))
+
+        # Binarización adaptativa para mejor OCR
+        import numpy as np
+        img_array = np.array(image)
+
+        # Aplicar threshold adaptativo
+        from scipy import ndimage
+        img_array = ndimage.grey_erosion(img_array, size=(2,2))
+        img_array = ndimage.grey_dilation(img_array, size=(2,2))
+
+        # Convertir de vuelta a PIL Image
+        image = Image.fromarray(img_array)
+
+        # --- CONFIGURACIÓN MEJORADA DE TESSERACT ---
+        # Configuración personalizada para mejor reconocimiento
+        custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÑáéíóúñ.,RD$()[]/- '
+
+        # Extraer texto usando Tesseract con configuración optimizada
+        text = pytesseract.image_to_string(image, lang='spa', config=custom_config)
+
+        # Limpiar texto extraído
+        text = text.strip()
+        text = re.sub(r'\n\s*\n', '\n', text)  # Remover líneas vacías múltiples
+
+        # --- PARSING MEJORADO DE FACTURAS ---
         items = []
 
-        for line in text.split('\n'):
+        # Patrones más flexibles para diferentes formatos de facturas dominicanas
+        # Patrón para precios: RD$ 1,500.00 o 1500.00 o 1,500.00 o 1500 o RD$1500
+        price_patterns = [
+            re.compile(r'RD\$\s*(\d{1,3}(?:,\d{3})*\.?\d{0,2})'),  # RD$ 1,500.00 o RD$1500
+            re.compile(r'(\d{1,3}(?:,\d{3})*\.?\d{0,2})\s*RD\$'),  # 1,500.00 RD$ o 1500RD$
+            re.compile(r'\b(\d{1,3}(?:,\d{3})*\.\d{2})\b'),          # Solo números con decimales obligatorios
+            re.compile(r'\b(\d{1,3}(?:,\d{3})*)\b(?!\.)'),          # Números enteros sin decimales (siempre que no sigan con punto)
+        ]
+
+        # Patrón para cantidad: números al inicio de línea, más flexible
+        quantity_pattern = re.compile(r'^(\d+(?:\.\d+)?)\s+')
+
+        # Procesar línea por línea
+        lines = text.split('\n')
+
+        for i, line in enumerate(lines):
             line = line.strip()
-            if not line:
+            if not line or len(line) < 3:
                 continue
 
-            # Encontrar todos los posibles precios en la línea
-            price_matches = price_pattern.findall(line)
-            if price_matches:
+            # Buscar precios en la línea usando todos los patrones
+            found_prices = []
+            for pattern in price_patterns:
+                matches = pattern.findall(line)
+                if matches:
+                    # Limpiar formato de precio
+                    for match in matches:
+                        price_str = match.replace(',', '').strip()
+                        try:
+                            price_val = float(price_str)
+                            if 0.01 <= price_val <= 999999.99:  # Rango razonable para precios
+                                found_prices.append(price_val)
+                        except ValueError:
+                            continue
+
+            if not found_prices:
+                continue
+
+            # Tomar el último precio encontrado (generalmente el más relevante)
+            price_val = found_prices[-1]
+
+            # Buscar cantidad al inicio de la línea
+            quantity = 1
+            quantity_match = quantity_pattern.match(line)
+            if quantity_match:
                 try:
-                    # Asumir que el último número es el precio
-                    price_str = price_matches[-1].replace(',', '')
-                    price_val = float(price_str)
-
-                    # Extraer cantidad (si existe al principio)
+                    quantity = float(quantity_match.group(1))
+                    if quantity > 1000:  # Probablemente no es cantidad
+                        quantity = 1
+                except ValueError:
                     quantity = 1
-                    quantity_match = re.match(r'^(\d+)\s+', line)
-                    if quantity_match:
-                        quantity = int(quantity_match.group(1))
 
-                    # Construir el nombre del producto eliminando el precio y la cantidad
-                    # Reemplazamos el precio y la cantidad (si se encontró) por un espacio
-                    name = line.replace(price_matches[-1], ' ')
-                    if quantity_match:
-                        name = name.replace(quantity_match.group(0), ' ', 1)
+            # Extraer nombre del producto
+            name = line
 
-                    # Limpiar el nombre: quitar números sueltos, caracteres especiales y espacios extra
-                    name = re.sub(r'\b\d+\b', '', name) # Quitar números que son palabras completas
-                    name = re.sub(r'[^\w\s-]', '', name) # Quitar caracteres no alfanuméricos (excepto guiones)
-                    name = ' '.join(name.split()).strip()
+            # Remover precios encontrados
+            for pattern in price_patterns:
+                name = pattern.sub('', name)
 
-                    # Asegurarse de que 'name' no sea None antes de llamar a len()
-                    if name and len(name) > 3: # Evitar líneas que son solo precios o códigos
-                        items.append({"nombre": name, "costo": price_val, "cantidad": quantity})
-                except (ValueError, IndexError):
-                    continue
-        
-        return jsonify({"success": True, "items": items})
+            # Remover cantidad del inicio
+            name = quantity_pattern.sub('', name)
+
+            # Limpiar nombre: remover caracteres especiales, números sueltos, espacios extra
+            name = re.sub(r'[^\w\sÁÉÍÓÚÑáéíóúñ-]', ' ', name)  # Solo letras, números, espacios y guiones
+            name = re.sub(r'\b\d+\b', '', name)  # Remover números que son palabras completas
+            name = re.sub(r'\s+', ' ', name).strip()  # Espacios múltiples a uno solo
+
+            # Filtros adicionales para nombres válidos
+            if len(name) < 2 or len(name) > 100:  # Nombre demasiado corto o largo
+                continue
+
+            # Evitar nombres que son solo números o símbolos
+            if re.match(r'^[^a-zA-ZÁÉÍÓÚÑáéíóúñ]*$', name):
+                continue
+
+            # Verificar que no sea un duplicado cercano (por nombre y precio)
+            is_duplicate = False
+            for existing_item in items:
+                if (existing_item['nombre'].lower().strip() == name.lower().strip() and
+                    abs(existing_item['costo'] - price_val) < 0.01):
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                items.append({
+                    "nombre": name,
+                    "costo": price_val,
+                    "cantidad": quantity
+                })
+
+        # --- VALIDACIÓN Y CORRECCIÓN FINAL ---
+        # Remover items con nombres muy similares pero precios muy diferentes
+        if len(items) > 1:
+            items_to_remove = []
+            for i, item1 in enumerate(items):
+                for j, item2 in enumerate(items[i+1:], i+1):
+                    # Si nombres son similares (>80% similitud) pero precios muy diferentes (>50%)
+                    name1 = item1['nombre'].lower()
+                    name2 = item2['nombre'].lower()
+                    similarity = len(set(name1.split()) & set(name2.split())) / max(len(set(name1.split())), len(set(name2.split())))
+                    price_diff = abs(item1['costo'] - item2['costo']) / max(item1['costo'], item2['costo'])
+
+                    if similarity > 0.8 and price_diff > 0.5:
+                        # Mantener el que tenga nombre más largo (más descriptivo)
+                        if len(item1['nombre']) < len(item2['nombre']):
+                            items_to_remove.append(i)
+                        else:
+                            items_to_remove.append(j)
+
+            # Remover duplicados marcados
+            for index in sorted(set(items_to_remove), reverse=True):
+                if index < len(items):
+                    items.pop(index)
+
+        # Limitar a máximo 50 items para evitar sobrecarga
+        items = items[:50]
+
+        # Información de depuración
+        debug_info = {
+            "total_lines": len(lines),
+            "extracted_text_length": len(text),
+            "found_items": len(items)
+        }
+
+        return jsonify({
+            "success": True,
+            "items": items,
+            "debug_info": debug_info,
+            "raw_text_preview": text[:500] + "..." if len(text) > 500 else text
+        })
 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"Error procesando imagen de factura: {str(e)}")
-        return jsonify({"success": False, "error": f"Error interno del servidor: {e}"}), 500
+        print(f"Traceback: {error_details}")
+        return jsonify({
+            "success": False,
+            "error": f"Error interno del servidor: {str(e)}",
+            "details": "Verifica que la imagen sea legible y no esté borrosa"
+        }), 500
 
 @app.route('/api/products/bulk_add', methods=['POST'])
 @login_required
@@ -1290,6 +1476,10 @@ def api_register_sale():
             })
 
         venta_id = registrar_venta(items, total, itbis_incluido, discount, user_id, tipo_pago, client_id, temp_client_name)
+
+        # Emitir notificación en tiempo real
+        notify_sale_registered(venta_id, total)
+
         return jsonify({
             "success": True,
             "message": f"Venta #{venta_id} registrada correctamente.",

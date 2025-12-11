@@ -29,7 +29,7 @@
 
     <div class="row mt-4">
         <!-- PANEL IZQUIERDO: PRODUCTOS -->
-        <div class="col-lg-7">
+        <div class="col-lg-7 col-12 order-2 order-lg-1">
             <!-- ESCÁNER MÓVIL FLOTANTE -->
             <div id="floating-scanner-container" class="floating-scanner-container" style="display: none;">
                 <div class="floating-scanner-panel">
@@ -872,7 +872,7 @@ function setupEventListeners() {
                 // Reproducir beep de éxito si está disponible
                 if ('Audio' in window) {
                     try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)());
                         const oscillator = audioContext.createOscillator();
                         const gainNode = audioContext.createGain();
 
@@ -895,7 +895,7 @@ function setupEventListeners() {
                 // Reproducir beep de error
                 if ('Audio' in window) {
                     try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)());
                         const oscillator = audioContext.createOscillator();
                         const gainNode = audioContext.createGain();
 
@@ -2696,7 +2696,7 @@ window.posScanner = (function() {
 
 .fab-scanner:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+    box-shadow: 0 6px 20px rgba(40, 167, 69,0.6);
 }
 
 .fab-scanner:active {

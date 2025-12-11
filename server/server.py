@@ -23,7 +23,7 @@ import base64
 import unicodedata
 
 # Conectar a la base de datos INMEDIATAMENTE después del import para que las colecciones se inicialicen
-conectar_db()
+db = conectar_db()
 print("✅ Inicialización de base de datos completada en server.py")
 from PIL import Image
 import numpy as np
@@ -200,6 +200,11 @@ def sales_history_page():
 def get_products():
     """Devuelve la lista de todos los productos en formato JSON."""
     productos = obtener_productos() # Esta función ya devuelve una lista de diccionarios
+    # Convertir ObjectId a string para el campo 'id' que usa el frontend
+    for p in productos:
+        if '_id' in p:
+            p['id'] = str(p['_id'])
+            # Opcional: eliminar _id si no se necesita en el frontend
     return jsonify(productos)
 
 @app.route('/api/stats')
@@ -256,8 +261,17 @@ def add_product():
         if not all([codigo, nombre, departamento]):
              return jsonify({"success": False, "error": "Código, Nombre y Departamento son requeridos."}), 400
 
-        agregar_producto(codigo, nombre, costo, precio, stock, stock_minimo, departamento, unidad_medida)
-        return jsonify({"success": True, "message": "Producto agregado correctamente."})
+         # La función agregar_producto devuelve el ID del nuevo producto
+        try:
+            new_product_id = agregar_producto(codigo, nombre, costo, precio, stock, stock_minimo, departamento, unidad_medida)
+            # Buscar el producto recién creado para devolverlo completo
+            new_product = buscar_producto_por_id(new_product_id)
+            if new_product:
+                new_product['id'] = str(new_product['_id'])
+                return jsonify({"success": True, "message": "Producto agregado correctamente.", "product": new_product})
+            return jsonify({"success": True, "message": "Producto agregado, pero no se pudo recuperar."})
+        except Exception as e:
+            return jsonify({"success": False, "error": f"No se pudo agregar el producto. Causa probable: Código de barras duplicado. ({str(e)})"}), 500
 
     except Exception as e:
         return jsonify({"success": False, "error": f"No se pudo agregar el producto. Causa probable: Código de barras duplicado. ({str(e)})"}), 500
@@ -2298,6 +2312,68 @@ def backups_page():
         return redirect(url_for('dashboard'))
 
     return render_template('backups.html')
+
+# --- RUTAS PARA HISTORIAL DE LISTA DE COMPRAS URGENTE ---
+@app.route('/api/shopping_list', methods=['GET'])
+@login_required
+def get_shopping_list():
+    """Obtiene la lista de compras urgente MÁS RECIENTE desde la base de datos."""
+    try:
+        # Busca en la colección de historial, ordena por fecha descendente y toma la primera.
+        latest_list_doc = db.shopping_lists.find_one(sort=[("saved_at", -1)])
+        if latest_list_doc:
+            return jsonify({"success": True, "shopping_list": latest_list_doc.get("list", {})})
+        else:
+            return jsonify({"success": True, "shopping_list": {}}) # Si no hay historial, devuelve una lista vacía
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/shopping_list/save', methods=['POST'])
+@login_required
+def save_shopping_list_api():
+    """Guarda una NUEVA entrada en el historial de la lista de compras."""
+    data = request.get_json()
+    current_list = data.get('shopping_list', {})
+    
+    # No guardar si la lista está vacía para no llenar el historial con nada
+    if not current_list:
+        return jsonify({"success": True, "message": "No se guarda la lista vacía."})
+
+    try:
+        # Insertar un nuevo documento en lugar de actualizar uno existente
+        db.shopping_lists.insert_one({
+            "list": current_list,
+            "saved_at": datetime.now(),
+            "item_count": len(current_list)
+        })
+        return jsonify({"success": True, "message": "Versión de la lista guardada en el historial."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/shopping_lists/history', methods=['GET'])
+@login_required
+def get_shopping_list_history():
+    """Obtiene el historial de todas las listas de compras guardadas."""
+    try:
+        history = list(db.shopping_lists.find({}, {"list": 0}).sort("saved_at", -1))
+        for item in history:
+            item['_id'] = str(item['_id'])
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/shopping_list/<list_id>', methods=['GET'])
+@login_required
+def get_specific_shopping_list(list_id):
+    """Obtiene una lista de compras específica del historial por su ID."""
+    try:
+        shopping_list_doc = db.shopping_lists.find_one({"_id": ObjectId(list_id)})
+        if shopping_list_doc:
+            return jsonify({"success": True, "shopping_list": shopping_list_doc.get("list", {})})
+        else:
+            return jsonify({"success": False, "error": "Lista no encontrada"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     # La opción host='0.0.0.0' hace que el servidor sea accesible

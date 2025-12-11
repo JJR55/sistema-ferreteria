@@ -620,9 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar productos frecuentes
     renderFrequentProducts();
 
-    // Cargar productos en caché para búsqueda avanzada
-    fetchAllProductsForCache();
-
     if (clientDisplayElement) {
         clientDisplayDiv = clientDisplayElement;
     }
@@ -1304,7 +1301,6 @@ document.getElementById('confirm-payment-btn').addEventListener('click', () => {
     // Actualizar la lista de ventas pausadas al cargar la página
     updateHoldList();
 
-    // Configurar eventos para la búsqueda avanzada
     setupAdvancedSearch();
 }
 

@@ -205,7 +205,10 @@
                             <div id="shopping-list-search-results" class="search-results" style="position: relative;"></div>
                         </div>
                         <div class="col-md-4 text-end">
-                            <button class="btn btn-info me-2" id="export-shopping-list-pdf-btn" data-bs-toggle="modal" data-bs-target="#exportShoppingListPdfModal"><i class="bi bi-file-earmark-pdf"></i> Exportar PDF</button>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary" id="show-shopping-list-history-btn" title="Ver historial de listas"><i class="bi bi-clock-history"></i> Ver Historial</button>
+                                <button class="btn btn-info" id="export-shopping-list-pdf-btn" data-bs-toggle="modal" data-bs-target="#exportShoppingListPdfModal" title="Exportar lista actual a PDF"><i class="bi bi-file-earmark-pdf"></i> Exportar PDF</button>
+                            </div>
                             <button class="btn btn-danger" id="clear-shopping-list-btn"><i class="bi bi-trash3-fill"></i> Limpiar Lista</button>
                         </div>
                     </div>
@@ -479,6 +482,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para Historial de Listas de Compras -->
+<div class="modal fade" id="shoppingListHistoryModal" tabindex="-1" aria-labelledby="shoppingListHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="shoppingListHistoryModalLabel"><i class="bi bi-clock-history"></i> Historial de Listas de Compras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Aquí puedes ver y restaurar versiones anteriores de tu lista de compras.</p>
+                <ul class="list-group" id="shopping-list-history-container">
+                    <!-- El historial se cargará aquí dinámicamente -->
+                </ul>
+                <div id="empty-history-message" class="text-center p-4" style="display: none;">
+                    <p>No hay historial de listas guardadas.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 <style>
@@ -719,14 +747,20 @@ body.dark-mode .department-badge {
     }
 
     async function fetchInventory() {
-        const response = await fetch('/api/products');
-        allProducts = await response.json();
+        try {
+            const response = await fetch('/api/products');
+            if (!response.ok) throw new Error('Error al cargar productos');
+            const products = await response.json();
+            allProducts = products; // Asignación correcta
+        } catch (error) {
+            console.error("Fallo fetchInventory:", error);
+        }
         filterProducts();
     }
 
     // Event listeners para filtros con mantenimiento de selección
-    document.getElementById('inventory-search').addEventListener('keyup', filterProductsWithSelection);
-    document.getElementById('department-filter').addEventListener('change', filterProductsWithSelection);
+    document.getElementById('inventory-search').addEventListener('keyup', filterProducts);
+    document.getElementById('department-filter').addEventListener('change', filterProducts);
 
     document.getElementById('add-product-btn').addEventListener('click', () => {
         document.getElementById('productModalLabel').textContent = 'Agregar Producto';
@@ -1279,16 +1313,35 @@ body.dark-mode .department-badge {
 
     // --- LÓGICA PARA LA LISTA DE COMPRAS URGENTE ---
 
-    function loadShoppingList() {
-        const savedList = localStorage.getItem('urgentShoppingList');
-        if (savedList) {
-            shoppingList = JSON.parse(savedList);
+    async function loadShoppingList() {
+        try {
+            const response = await fetch('/api/shopping_list');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    shoppingList = data.shopping_list || {};
+                } else {
+                    console.error('Error al cargar la lista de compras:', data.error);
+                    shoppingList = {};
+                }
+            } else {
+                console.error('Error de servidor al cargar la lista:', response.statusText);
+                shoppingList = {};
+            }
+        } catch (error) {
+            console.error('Error de red al cargar la lista de compras:', error);
+            shoppingList = {};
+        } finally {
+            renderShoppingList(); // Renderizar siempre, incluso si está vacía
         }
-        renderShoppingList();
     }
 
-    function saveShoppingList() {
-        localStorage.setItem('urgentShoppingList', JSON.stringify(shoppingList));
+    async function saveShoppingList() {
+        await fetch('/api/shopping_list/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shopping_list: shoppingList })
+        });
     }
 
     function renderShoppingList() {
@@ -1376,19 +1429,24 @@ body.dark-mode .department-badge {
 
     document.getElementById('shopping-list-table-body').addEventListener('click', function(e) {
         const removeBtn = e.target.closest('.remove-shopping-item');
+        const linkBtn = e.target.closest('.link-inventory-item-btn');
+        console.log('Click event on shopping-list-table-body. Target:', e.target);
+
         if (removeBtn) {
+            e.stopPropagation(); // Detener la propagación del evento
             const productId = removeBtn.dataset.id;
             delete shoppingList[productId];
             saveShoppingList();
             renderShoppingList();
-            return; // Detener para no activar otros listeners
+            return; // Salir para evitar conflictos
         }
 
-        const linkBtn = e.target.closest('.link-inventory-item-btn');
-        if (linkBtn) {
+        if (linkBtn) { // Este bloque ahora debería funcionar correctamente
+            console.log('Botón Vincular clickeado para ID:', linkBtn.dataset.id);
+            e.stopPropagation(); // Detener la propagación del evento
             const manualId = linkBtn.dataset.id;
             openLinkModal(manualId);
-        }
+        } // La función openLinkModal ahora creará el producto directamente
     });
 
     document.getElementById('clear-shopping-list-btn').addEventListener('click', function() {
@@ -1399,7 +1457,52 @@ body.dark-mode .department-badge {
         }
     });
 
-    // --- LÓGICA PARA EXPORTAR LISTA DE COMPRAS A PDF CON FILTRO ---
+    async function openLinkModal(manualId) {
+        console.log('Función de vinculación iniciada para el ID manual:', manualId);
+        const manualItem = shoppingList[manualId];
+        if (!manualItem) {
+            console.error('No se encontró el artículo manual para vincular.');
+            return;
+        }
+
+        if (!confirm(`¿Desea crear el producto "${manualItem.product.nombre}" en el inventario y vincularlo?`)) {
+            return;
+        }
+
+        const newProductData = {
+            nombre: manualItem.product.nombre,
+            departamento: manualItem.product.departamento || 'Ferretería',
+            codigo_barras: `TEMP-${Date.now()}`, // Generar un código temporal único
+            costo: 0,
+            precio: 0,
+            stock: 0,
+            stock_minimo: 0,
+            unidad_medida: 'Unidad'
+        };
+
+        try {
+            const response = await fetch('/api/product/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newProductData)
+            });
+            const result = await response.json();
+
+            if (result.success && result.product) {
+                delete shoppingList[manualId]; // Eliminar el item manual
+                shoppingList[result.product.id] = { product: result.product, quantityToBuy: manualItem.quantityToBuy, isManual: false }; // Añadir el nuevo producto vinculado
+                await saveShoppingList();
+                renderShoppingList();
+                await fetchInventory(); // Recargar el inventario para que incluya el nuevo producto
+                alert(`Producto "${result.product.nombre}" creado y vinculado exitosamente.`);
+            } else {
+                alert(`Error al crear el producto: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Error de red al intentar crear el producto.');
+        }
+    }
+
     document.getElementById('confirm-export-shopping-list-pdf-btn').addEventListener('click', function() {
         const departmentFilter = document.getElementById('export-shopping-list-department-filter').value;
         exportShoppingListToPdf(departmentFilter);
@@ -1518,22 +1621,11 @@ body.dark-mode .department-badge {
         alert('✅ Lista de compras exportada a PDF exitosamente.');
     }
 
-    // Sobreescribir las funciones de filtro para incluir la lógica de selección
-    const originalSearchListener = document.getElementById('inventory-search').addEventListener;
-    const originalDepartmentListener = document.getElementById('department-filter').addEventListener;
-
-    // Remover event listeners antiguos
-    // (Esto es un poco tricky, necesitamos recrearlos)
-
-    // Ejecutar fetchInventory para inicializar
-    fetchInventory();
-    loadShoppingList(); // Cargar la lista de compras al iniciar
-
     // --- LÓGICA PARA AGREGAR ARTÍCULO MANUAL ---
     const addManualItemModal = new bootstrap.Modal(document.getElementById('addManualItemModal'));
     const saveManualShoppingItemBtn = document.getElementById('save-manual-shopping-item-btn');
 
-    saveManualShoppingItemBtn.addEventListener('click', function() {
+    saveManualShoppingItemBtn.addEventListener('click', async function() {
         const descriptionInput = document.getElementById('manual-item-description');
         const quantityInput = document.getElementById('manual-item-quantity');
 
@@ -1562,5 +1654,9 @@ body.dark-mode .department-badge {
         descriptionInput.value = '';
         quantityInput.value = '1';
     });
+
+    // Ejecutar fetchInventory para inicializar
+    fetchInventory();
+    loadShoppingList(); // Cargar la lista de compras al iniciar
 </script>
 {% endblock %}

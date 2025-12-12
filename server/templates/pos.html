@@ -592,36 +592,70 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- Lazy load scanner script for better performance -->
+<!-- Lazy load POS JavaScript for better performance -->
 <script>
-    // Lazy load scanner script to improve initial page load
-    function loadScannerScript() {
-        if (!window.scannerLoaded) {
-            const script = document.createElement('script');
-            script.src = "{{ url_for('static', filename='js/scanner.js') }}";
-            script.onload = function() {
-                window.scannerLoaded = true;
-                console.log('Scanner script loaded successfully');
+    // Debounce function for search optimization
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
             };
-            script.onerror = function() {
-                console.warn('Failed to load scanner script');
-            };
-            document.head.appendChild(script);
-        }
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
-    // Load scanner only when needed (when scanner modal is opened)
-    document.addEventListener('DOMContentLoaded', function() {
-        const scannerModal = document.getElementById('scannerModal');
-        if (scannerModal) {
-            scannerModal.addEventListener('show.bs.modal', loadScannerScript);
-        }
+    // Lazy load POS functionality
+    let posJSLoaded = false;
 
-        // Load scanner on FAB click
-        const fabScanner = document.getElementById('fab-scanner');
-        if (fabScanner) {
-            fabScanner.addEventListener('click', loadScannerScript);
-        }
+    function loadPosJS() {
+        if (posJSLoaded) return;
+
+        // Load scanner script first
+        const scannerScript = document.createElement('script');
+        scannerScript.src = "{{ url_for('static', filename='js/scanner.js') }}";
+        scannerScript.onload = function() {
+            console.log('Scanner script loaded');
+            // Then load main POS script
+            const posScript = document.createElement('script');
+            posScript.src = "{{ url_for('static', filename='js/pos.js') }}";
+            posScript.onload = function() {
+                posJSLoaded = true;
+                console.log('POS script loaded successfully');
+                // Initialize POS after scripts are loaded
+                if (window.initPOS) {
+                    window.initPOS();
+                }
+            };
+            document.head.appendChild(posScript);
+        };
+        document.head.appendChild(scannerScript);
+    }
+
+    // Load POS JS on first user interaction or after page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load immediately if user starts typing or clicking
+        let loaded = false;
+        const loadOnInteraction = () => {
+            if (!loaded) {
+                loaded = true;
+                loadPosJS();
+            }
+        };
+
+        // Load on first input or click
+        document.addEventListener('click', loadOnInteraction, { once: true });
+        document.addEventListener('keydown', loadOnInteraction, { once: true });
+
+        // Fallback: load after 2 seconds if no interaction
+        setTimeout(() => {
+            if (!loaded) {
+                loaded = true;
+                loadPosJS();
+            }
+        }, 2000);
     });
 </script>
 

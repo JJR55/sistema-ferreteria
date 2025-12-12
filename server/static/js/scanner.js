@@ -197,11 +197,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                successSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+                // Usar la función global definida en scanner.html
+                if (typeof playSuccessBeep === 'function') {
+                    playSuccessBeep();
+                } else {
+                    successSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+                }
                 showToast(`Producto "${result.product.nombre}" encontrado.`);
                 addProductToList(result.product, 1);
             } else {
-                errorSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+                // Usar la función global definida en scanner.html
+                if (typeof playErrorBeep === 'function') {
+                    playErrorBeep();
+                } else {
+                    errorSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+                }
                 showToast(`Producto no encontrado (${barcode}). Se agregará como nuevo.`, true);
                 // Crear un producto placeholder si no se encuentra
                 const newProductPlaceholder = {
@@ -576,7 +586,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                successSound.play().catch(e => console.error("Error sonido:", e));
+                // Usar la función global definida en scanner.html
+                if (typeof playSuccessBeep === 'function') {
+                    playSuccessBeep();
+                } else {
+                    successSound.play().catch(e => console.error("Error sonido:", e));
+                }
                 showToast(`Producto "${result.product.nombre}" encontrado.`);
                 addProductToList(result.product);
 
@@ -585,7 +600,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     updatePosCart(result.product);
                 }
             } else {
-                errorSound.play().catch(e => console.error("Error sonido:", e));
+                // Usar la función global definida en scanner.html
+                if (typeof playErrorBeep === 'function') {
+                    playErrorBeep();
+                } else {
+                    errorSound.play().catch(e => console.error("Error sonido:", e));
+                }
                 if (result.barcode) {
                     showToast(`Código detectado: ${result.barcode}. ${result.error}`, true);
                 } else {

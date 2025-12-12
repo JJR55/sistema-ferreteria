@@ -32,7 +32,7 @@
                                 <!-- Contenedor del visor de la cámara -->
                                 <div id="interactive" class="viewport mx-auto" style="max-width: 480px; min-height: 360px; position: relative; background: #000; border-radius: 8px; overflow: hidden;">
                                     <!-- El video y el canvas de QuaggaJS se insertarán aquí -->
-                                    <video autoplay="true" preload="auto" src="" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                    <video autoplay="true" preload="auto" src="" style="width: 100%; height: 100%; object-fit: cover; filter: brightness(1.3) contrast(1.1) saturate(1.2);"></video>
                                     <canvas class="drawingBuffer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
 
                                     <!-- Overlay que se ocultará cuando la cámara esté activa -->
@@ -227,17 +227,65 @@
         if (btn) btn.click();
     }
 
-    function playBeep(success = true) {
-        if ('AudioContext' in window || 'webkitAudioContext' in window) {
+    // --- FUNCIONES DE AUDIO MEJORADAS PARA ESCÁNER ---
+    function playSuccessBeep() {
+        if (!('Audio' in window)) {
+            console.log('Web Audio API no disponible');
+            return;
+        }
+
+        try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
+
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-            oscillator.frequency.setValueAtTime(success ? 900 : 300, audioContext.currentTime);
+
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
             oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.15);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (e) {
+            console.log('Beep de éxito no disponible:', e.message);
+        }
+    }
+
+    function playErrorBeep() {
+        if (!('Audio' in window)) {
+            console.log('Web Audio API no disponible');
+            return;
+        }
+
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('Beep de error no disponible:', e.message);
+        }
+    }
+
+    // Función de compatibilidad para código existente
+    function playBeep(success = true) {
+        if (success) {
+            playSuccessBeep();
+        } else {
+            playErrorBeep();
         }
     }
 

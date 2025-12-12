@@ -796,55 +796,9 @@
             // Cargar notificaciones al inicio
             fetchNotifications();
 
-            // Intercept sidebar navigation to load content into .content-wrapper (SPA-like behavior)
-            function isSameOrigin(url) {
-                try { const u = new URL(url, window.location.origin); return u.origin === window.location.origin; } catch(e){ return false; }
-            }
-
-            document.querySelectorAll('.sidebar-menu a').forEach(link => {
-                link.addEventListener('click', function(evt){
-                    const href = link.getAttribute('href');
-                    if (!href || href.startsWith('#')) return;
-                    if (!isSameOrigin(href)) return; // external
-
-                    // Intercept only app routes (avoid API endpoints)
-                    if (href.startsWith('/')){
-                        evt.preventDefault();
-                        fetch(href, { credentials: 'same-origin' }).then(r => {
-                            if (!r.ok) { window.location.href = href; return null; }
-                            return r.text();
-                        }).then(html => {
-                            if (!html) return;
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(html, 'text/html');
-                            const fragment = doc.querySelector('.content-wrapper') || doc.querySelector('.main-content') || doc.body;
-                            const target = document.querySelector('.content-wrapper');
-                            if (fragment && target){
-                                target.innerHTML = fragment.innerHTML;
-                                // Update active class
-                                document.querySelectorAll('.sidebar-menu a').forEach(x=>x.classList.remove('active'));
-                                link.classList.add('active');
-                                // Update history
-                                window.history.pushState({url: href}, '', href);
-                            } else {
-                                window.location.href = href;
-                            }
-                        }).catch(err=>{ console.error('Navigation error', err); window.location.href = href; });
-                    }
-                });
-            });
-
-            // Handle back/forward
-            window.addEventListener('popstate', function(ev){
-                const url = (ev.state && ev.state.url) || window.location.pathname;
-                fetch(url, { credentials: 'same-origin' }).then(r => r.text()).then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const fragment = doc.querySelector('.content-wrapper') || doc.querySelector('.main-content') || doc.body;
-                    const target = document.querySelector('.content-wrapper');
-                    if (fragment && target) target.innerHTML = fragment.innerHTML;
-                }).catch(()=>{ window.location.href = url; });
-            });
+            // Optimización: Navegación tradicional más rápida y confiable
+            // Se elimina el comportamiento SPA problemático que causaba lentitud y necesidad de refresh
+            // Ahora la navegación será directa al servidor, más rápida y confiable
         });
 
         // Handle window resize for responsive behavior

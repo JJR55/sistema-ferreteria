@@ -2566,7 +2566,18 @@ def get_specific_shopping_list(list_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
-    # La opción host='0.0.0.0' hace que el servidor sea accesible
-    # desde otros dispositivos en la misma red (como tu tablet).
-    # El modo debug recarga automáticamente el servidor cuando haces cambios.
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Configuración para Render.com y producción
+    import os
+
+    # Detectar si estamos en Render.com
+    is_render = os.environ.get('RENDER') == 'true'
+
+    if is_render:
+        # Configuración optimizada para Render.com
+        port = int(os.environ.get('PORT', 5000))
+
+        # Ejecutar con configuración de producción
+        socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    else:
+        # Configuración de desarrollo local
+        socketio.run(app, host='0.0.0.0', port=5000, debug=True)

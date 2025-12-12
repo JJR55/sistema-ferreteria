@@ -592,10 +592,121 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- Incluir scanner para poder usarlo con el móvil -->
-<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<!-- Lazy load scanner script for better performance -->
+<script>
+    // Lazy load scanner script to improve initial page load
+    function loadScannerScript() {
+        if (!window.scannerLoaded) {
+            const script = document.createElement('script');
+            script.src = "{{ url_for('static', filename='js/scanner.js') }}";
+            script.onload = function() {
+                window.scannerLoaded = true;
+                console.log('Scanner script loaded successfully');
+            };
+            script.onerror = function() {
+                console.warn('Failed to load scanner script');
+            };
+            document.head.appendChild(script);
+        }
+    }
+
+    // Load scanner only when needed (when scanner modal is opened)
+    document.addEventListener('DOMContentLoaded', function() {
+        const scannerModal = document.getElementById('scannerModal');
+        if (scannerModal) {
+            scannerModal.addEventListener('show.bs.modal', loadScannerScript);
+        }
+
+        // Load scanner on FAB click
+        const fabScanner = document.getElementById('fab-scanner');
+        if (fabScanner) {
+            fabScanner.addEventListener('click', loadScannerScript);
+        }
+    });
+</script>
+
+<!-- Load QuaggaJS only when scanner is needed -->
+<script>
+    let quaggaLoaded = false;
+
+    function loadQuaggaJS() {
+        if (!quaggaLoaded) {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js";
+            script.onload = function() {
+                quaggaLoaded = true;
+                console.log('QuaggaJS loaded successfully');
+            };
+            script.onerror = function() {
+                console.warn('Failed to load QuaggaJS');
+            };
+            document.head.appendChild(script);
+        }
+    }
+
+    // Load Quagga when scanner modal is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const scannerModal = document.getElementById('scannerModal');
+        if (scannerModal) {
+            scannerModal.addEventListener('show.bs.modal', loadQuaggaJS);
+        }
+    });
+</script>
 
 <script>
+// --- FUNCIONES DE AUDIO MEJORADAS ---
+function playSuccessBeep() {
+    if (!('Audio' in window)) {
+        console.log('Web Audio API no disponible');
+        return;
+    }
+
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+        console.log('Beep de éxito no disponible:', e.message);
+    }
+}
+
+function playErrorBeep() {
+    if (!('Audio' in window)) {
+        console.log('Web Audio API no disponible');
+        return;
+    }
+
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        console.log('Beep de error no disponible:', e.message);
+    }
+}
+
 // --- Estado de la Aplicación ---
 let saleItems = {};
 let selectedClient = null; // Inicialmente null, se asigna al seleccionar un cliente
@@ -868,51 +979,9 @@ function setupEventListeners() {
 
             if (result.success) {
                 addProductToSale(result.product);
-
-                // Reproducir beep de éxito si está disponible
-                if ('Audio' in window) {
-                    try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)());
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-
-                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
-
-                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.3);
-                    } catch (e) {
-                        console.log('Beep no disponible');
-                    }
-                }
+                playSuccessBeep(); // Reproducir beep de éxito
             } else {
-                // Reproducir beep de error
-                if ('Audio' in window) {
-                    try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)());
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-
-                        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.5);
-                    } catch (e) {
-                        console.log('Beep de error no disponible');
-                    }
-                }
-
+                playErrorBeep(); // Reproducir beep de error
                 alert(`Producto no encontrado: ${result.error}`);
             }
         } catch (error) {
